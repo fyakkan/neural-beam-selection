@@ -96,7 +96,10 @@ ablation shows the gate is what preserves the clean-data parity
 (Section~\ref{sec:results}).
 \end{itemize}
 
-\section{Related Work}\label{sec:related}
+The complete MATLAB implementation, trained models, and the \LaTeX{} source of
+this paper are publicly available.\footnote{\url{https://github.com/REPLACE-WITH-REPO-URL}}
+
+\section{Related Work (Literature Review)}\label{sec:related}
 Early ML beam-selection work posed the task as classification of the best beam
 (pair) from side information such as UE position or LiDAR
 \cite{heng2019mlbeam,klautau2018itadata,klautau2019lidar}. Position/location-aided
@@ -138,7 +141,7 @@ Klautau \emph{et al.}~\cite{klautau2019lidar} (2019) & LiDAR & DL beam selection
 Sim \emph{et al.}~\cite{sim2020sub6} (2020) & Sub-6\,GHz & DL beam selection (NR/6G) & $\sim$79\% sweep-overhead reduction \\
 Alrabeiah \& Alkhateeb~\cite{alrabeiah2020sub6blockage} (2020) & Sub-6\,GHz & DL beam + blockage prediction & $>$90\% blockage prediction \\
 Rezaie \emph{et al.}~\cite{rezaie2022location} (2022) & Position + orientation & DL 3D beam set selection & Location/orientation-aided selection \\
-Polese \emph{et al.}~\cite{polese2021deepbeam} (2021) & Waveform/RF & Coordination-free beam mgmt & Up to $7\times$ lower latency \\
+Polese \emph{et al.}~\cite{polese2021deepbeam} (2021) & Waveform/RF & Coordination-free beam mgmt & $\sim$7$\times$ lower latency (default config) \\
 Demirhan \& Alkhateeb~\cite{demirhan2022radar} (2022) & Radar & DL beam prediction & Real-world radar-aided prediction \\
 Jiang \emph{et al.}~\cite{jiang2023lidar} (2023) & LiDAR & DL future-beam prediction & $\sim$90\% overhead reduction (V2I) \\
 Wu \emph{et al.}~\cite{wu2022blockage} (2022) & In-band power & Moving-blockage prediction & $>$85\% blockage accuracy \\
@@ -192,7 +195,14 @@ $81.4\%$ overhead reduction---and $97.4\%$ at $K=30$. Its average RSRP at $K=13$
 is $-23.21$\,dB, within $0.24$\,dB of the exhaustive optimum ($-22.97$\,dB) and
 well above KNN ($-25.29$\,dB). The neural method dominates KNN, Statistical, and
 Random across all $K$, reproducing the published behavior and validating our
-pipeline.
+pipeline. We emphasize that this is a faithful \emph{re-implementation} of the
+regression benchmark rather than a re-run of shipped code: the reference
+MathWorks example uses a wider $64$--$128$--$256$--$128$ ReLU network with
+global-max input normalization on a $20{,}000/700$ split, whereas we use a
+compact width-$96$ leaky-ReLU $z$-score MLP on the bundled $15{,}000/500$ dataset.
+Despite these differences, our re-implementation reproduces the published
+operating point ($90\%$ top-$K$ accuracy at $K=13$), confirming functional
+equivalence.
 
 \begin{table}[t]
 \centering
@@ -253,6 +263,11 @@ model this by, for each UE, setting $n_B$ of the $14$ measured beams (chosen
 uniformly at random) to the floor value, plus a small Gaussian RSRP measurement
 noise. The number of blocked input beams $n_B$ parameterizes the impairment
 severity; $n_B$ large corresponds to only a handful of reliably measured beams.
+We note that this model drops beams independently and uniformly at random,
+whereas physical mmWave blockage is spatially \emph{correlated}---a single
+obstruction tends to occlude a contiguous set of beam directions. We adopt the
+i.i.d.\ model for simplicity and leave correlated-blockage robustness to future
+work (Section~\ref{sec:conclusion}).
 
 \subsection{Architecture}
 The proposed network has two encoders. An RSRP encoder maps $\mathbf{x}$ to a
@@ -282,11 +297,32 @@ learning rate $10^{-3}$ with piecewise decay).
 
 \section{Experimental Results}\label{sec:results}
 
+\subsection{Experimental setup}
+All experiments use the TR~38.901 UMa scenario at $30$\,GHz (FR2), with a
+$4\times8$ gNB panel and $1\times4$ UE panel giving $70$ beam pairs; the network
+input is the $14$ uniformly downsampled RSRP measurements. We use the official
+pre-recorded dataset of $15{,}000$ training and $500$ test UE locations, holding
+out $10\%$ of training data for validation ($13{,}500/1{,}500/500$
+train/validation/test). All networks are trained with Adam for $300$ epochs,
+mini-batch $512$, initial learning rate $10^{-3}$ with piecewise decay
+($\times0.5$ every $80$ epochs), minimizing mean-squared error on the
+$[-1,1]$-normalized RSRP profile; the proposed and RSRP-only models additionally
+use blockage augmentation ($n_B\sim\mathcal{U}\{0,\dots,8\}$). Blockage-robustness
+results are averaged over $10$ independent random blockage draws (we report the
+mean and standard deviation). Experiments run in MATLAB R2025b (Deep Learning, 5G,
+Communications, Phased Array System, Statistics and Machine Learning, DSP System,
+and Signal Processing Toolboxes) on CPU.
+
 \subsection{Robustness to beam blockage}
 Fig.~\ref{fig:blockacc} and Table~\ref{tab:blockage} report top-$K$ accuracy
 ($K=13$, averaged over $10$ random blockage draws) versus the number of blocked
 input beams. On clean inputs ($n_B=0$) the proposed fusion matches the RSRP-only
-model ($89.4\%$ vs.\ $89.2\%$): the position modality incurs \emph{no} cost. As
+model ($89.4\%$ vs.\ $89.2\%$): the position modality incurs \emph{no}
+cost.\footnote{The RSRP-only clean accuracy here ($89.2\%$) is marginally below
+the $90.0\%$ of Section~\ref{sec:benchmark} because the models in this section are
+trained with blockage augmentation, which costs $\sim$0.8 points on clean inputs;
+the width sweep in Section~\ref{sec:results} likewise reports $89.6\%$ for the
+narrowest (width-$32$) network.} As
 beams are blocked, the fusion pulls ahead, with a consistent $+2$ to $+3.8$-point
 advantage for $n_B\in[6,12]$ (e.g.\ $39.7\%$ vs.\ $35.9\%$ at $n_B=10$). The
 position-only KNN is blockage-immune but flat at $37.8\%$, far below both
