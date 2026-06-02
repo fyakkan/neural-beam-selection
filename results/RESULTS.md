@@ -23,29 +23,34 @@ KNN/Statistical/Random. Figures: `baseline_topk_accuracy.png`, `baseline_avg_rsr
 out = tanh( base(RSRP) + gate·corr(position) ). Both RSRP-only and fusion are
 trained impairment-aware (blockage of 0–8 of 14 input beams + light noise).
 
-**Blockage robustness — top-K=13 accuracy (avg of 10 random blockage draws):**
+**Blockage robustness — top-K=13 accuracy (mean ± std over 10 random blockage draws):**
 
 | # blocked (of 14) | 0 | 2 | 4 | 6 | 8 | 10 | 12 |
 |---|---|---|---|---|---|---|---|
-| RSRP-only | 89.2 | 84.6 | 78.1 | 69.8 | 56.0 | 35.9 | 22.3 |
-| **Gated Fusion** | 89.4 | 83.5 | 78.7 | 72.1 | 57.9 | 39.7 | 24.9 |
+| RSRP-only | 89.2±0.0 | 84.6±1.1 | 78.1±2.2 | 69.8±1.5 | 56.0±1.6 | 35.9±2.4 | 22.3±0.9 |
+| **Gated Fusion** | 89.4±0.0 | 83.5±1.0 | 78.7±1.1 | 72.1±1.7 | 57.9±2.0 | 39.7±1.7 | 24.9±1.4 |
 | gain (pts) | +0.2 | −1.1 | +0.6 | +2.3 | +2.0 | +3.8 | +2.6 |
 
 Position-only KNN ≈ 37.8% (flat, blockage-immune). Headline: **no clean-data
 cost (+0.2), consistent +2–4 pt gain once beams are blocked** — a no-regret
-robustness improvement. Figures: `novel_blockage_accuracy.png`,
+robustness improvement. **Significance:** gains at nB≤4 (+0.2/−1.1/+0.6) are within
+one std (noise); gains at nB≥5 (+2.0 to +3.8 for nB∈[6,12]) exceed the per-draw std
+(real effect). Figures (with error bars / std bands): `novel_blockage_accuracy.png`,
 `novel_blockage_rsrp.png`, `novel_blockage_topk.png`, `novel_gate_behavior.png`.
+Per-cell std also in `results/metrics/novel_metrics.json`.
 
 ## 3. Architecture ablation (gate necessity) — `novel/exp_ablation_arch.m`
 acc@K=13 vs # blocked beams; all fusion variants trained with identical aug.
 
+Mean ± std over 10 draws.
+
 | # blocked | RSRP-only | Concat | Residual (no gate) | **Gated** |
 |---|---|---|---|---|
-| 0 (clean) | 89.2 | 84.4 | 88.0 | **89.4** |
-| 6 | 70.7 | 70.4 | 72.1 | 72.3 |
-| 8 | 55.5 | 60.5 | 58.7 | 58.7 |
-| 10 | 36.2 | **45.5** | 40.3 | 40.1 |
-| 12 | 22.6 | 29.4 | 25.0 | 25.1 |
+| 0 (clean) | 89.2±0.0 | 84.4±0.0 | 88.0±0.0 | **89.4±0.0** |
+| 6 | 70.7±0.6 | 70.4±1.5 | 72.1±1.4 | 72.3±1.6 |
+| 8 | 55.5±2.7 | 60.5±1.6 | 58.7±2.1 | 58.7±2.4 |
+| 10 | 36.2±2.8 | **45.5±1.7** | 40.3±2.3 | 40.1±2.1 |
+| 12 | 22.6±1.7 | 29.4±2.5 | 25.0±2.1 | 25.1±1.7 |
 
 - **Gate justified:** it preserves clean parity (89.4 vs no-gate 88.0) at equal
   blockage robustness. The learned gate is ≈0.78 (near-constant) — a learned

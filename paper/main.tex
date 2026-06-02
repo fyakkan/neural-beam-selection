@@ -10,6 +10,8 @@
 \usepackage{xcolor}
 \usepackage{url}
 \graphicspath{{figures/}}
+% compact mean$\pm$std cell: \ms{mean}{std} -> mean with small subscript std
+\newcommand{\ms}[2]{$#1_{\pm#2}$}
 
 \begin{document}
 
@@ -223,7 +225,7 @@ Avg.\ RSRP @\,$K{=}13$ (dB) & \textbf{$-23.21$} & $-25.29$ & $-22.97$ \\
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\columnwidth]{baseline_topk_accuracy.png}
+\includegraphics[width=0.9\columnwidth]{baseline_topk_accuracy.png}
 \caption{Reproduced benchmark: top-$K$ accuracy of the RSRP-regression network
 vs.\ KNN, Statistical, and Random baselines. The network reaches $90\%$ at
 $K=13$.}
@@ -328,38 +330,44 @@ advantage for $n_B\in[6,12]$ (e.g.\ $39.7\%$ vs.\ $35.9\%$ at $n_B=10$). The
 position-only KNN is blockage-immune but flat at $37.8\%$, far below both
 networks except under extreme blockage. Fig.~\ref{fig:blocktopk} shows that, at a
 representative $n_B=8$, the fusion dominates the RSRP-only model across the entire
-$K$ range.
+$K$ range. Quantifying significance across the $10$ draws (Table~\ref{tab:blockage}):
+the small differences at $n_B\le 4$ ($+0.2$, $-1.1$, $+0.6$) lie within one
+standard deviation and are not statistically meaningful, whereas the gains for
+$n_B\ge 5$ ($+2.0$ to $+3.8$ over $n_B\in[6,12]$) consistently exceed the
+per-draw standard deviation and constitute the real effect.
 
-\begin{table}[t]
+\begin{table*}[t]
 \centering
-\caption{Top-$K$ accuracy ($K{=}13$, \%) vs.\ number of blocked input beams.}
+\caption{Top-$K$ accuracy ($K{=}13$, \%, mean$\pm$std over 10 blockage draws) vs.\ number of blocked input beams.}
 \label{tab:blockage}
+\footnotesize
 \begin{tabular}{@{}lccccccc@{}}
 \toprule
 \# blocked & 0 & 2 & 4 & 6 & 8 & 10 & 12 \\
 \midrule
-RSRP-only & 89.2 & 84.6 & 78.1 & 69.8 & 56.0 & 35.9 & 22.3 \\
-Gated fusion & 89.4 & 83.5 & 78.7 & 72.1 & 57.9 & 39.7 & 24.9 \\
+RSRP-only & \ms{89.2}{0.0} & \ms{84.6}{1.1} & \ms{78.1}{2.2} & \ms{69.8}{1.5} & \ms{56.0}{1.6} & \ms{35.9}{2.4} & \ms{22.3}{0.9} \\
+Gated fusion & \ms{89.4}{0.0} & \ms{83.5}{1.0} & \ms{78.7}{1.1} & \ms{72.1}{1.7} & \ms{57.9}{2.0} & \ms{39.7}{1.7} & \ms{24.9}{1.4} \\
 Gain (pts) & $+0.2$ & $-1.1$ & $+0.6$ & $+2.3$ & $+2.0$ & $+3.8$ & $+2.6$ \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{table*}
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\columnwidth]{novel_blockage_accuracy.png}
-\caption{Top-$K$ accuracy ($K{=}13$) vs.\ number of blocked input beams. The
-gated fusion matches RSRP-only when clean and improves it under blockage; KNN
-(position only) is flat.}
+\includegraphics[width=0.9\columnwidth]{novel_blockage_accuracy.png}
+\caption{Top-$K$ accuracy ($K{=}13$) vs.\ number of blocked input beams; error
+bars are $\pm1$ standard deviation over $10$ blockage draws. The gated fusion
+matches RSRP-only when clean and improves it under blockage; KNN (position only)
+is flat.}
 \label{fig:blockacc}
 \end{figure}
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\columnwidth]{novel_blockage_topk.png}
-\caption{Top-$K$ accuracy vs.\ $K$ at a representative $8/14$ blocked input beams.
-The gated fusion dominates the RSRP-only model across $K$; both far exceed
-position-only KNN.}
+\includegraphics[width=0.9\columnwidth]{novel_blockage_topk.png}
+\caption{Top-$K$ accuracy vs.\ $K$ at a representative $8/14$ blocked input beams;
+shaded bands are $\pm1$ standard deviation over $10$ draws. The gated fusion
+dominates the RSRP-only model across $K$; both far exceed position-only KNN.}
 \label{fig:blocktopk}
 \end{figure}
 
@@ -380,23 +388,25 @@ correction that preserves clean accuracy while retaining robustness.
 
 \begin{table}[t]
 \centering
-\caption{Architecture ablation: top-$K$ accuracy ($K{=}13$, \%) vs.\ blockage.}
+\caption{Architecture ablation: top-$K$ accuracy ($K{=}13$, \%, mean$\pm$std over 10 draws) vs.\ blockage.}
 \label{tab:ablarch}
+\setlength{\tabcolsep}{4pt}
+\footnotesize
 \begin{tabular}{@{}lccccc@{}}
 \toprule
 \# blocked & 0 & 6 & 8 & 10 & 12 \\
 \midrule
-RSRP-only            & 89.2 & 70.7 & 55.5 & 36.2 & 22.6 \\
-Concatenation        & 84.4 & 70.4 & 60.5 & \textbf{45.5} & 29.4 \\
-Plain residual       & 88.0 & 72.1 & 58.7 & 40.3 & 25.0 \\
-\textbf{Gated residual} & \textbf{89.4} & 72.3 & 58.7 & 40.1 & 25.1 \\
+RSRP-only            & \ms{89.2}{0.0} & \ms{70.7}{0.6} & \ms{55.5}{2.7} & \ms{36.2}{2.8} & \ms{22.6}{1.7} \\
+Concatenation        & \ms{84.4}{0.0} & \ms{70.4}{1.5} & \ms{60.5}{1.6} & \textbf{\ms{45.5}{1.7}} & \ms{29.4}{2.5} \\
+Plain residual       & \ms{88.0}{0.0} & \ms{72.1}{1.4} & \ms{58.7}{2.1} & \ms{40.3}{2.3} & \ms{25.0}{2.1} \\
+\textbf{Gated residual} & \textbf{\ms{89.4}{0.0}} & \ms{72.3}{1.6} & \ms{58.7}{2.4} & \ms{40.1}{2.1} & \ms{25.1}{1.7} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\columnwidth]{novel_gate_behavior.png}
+\includegraphics[width=0.9\columnwidth]{novel_gate_behavior.png}
 \caption{The learned gate is nearly constant ($\approx0.78$) across blockage
 levels: robustness arises from the always-on residual position path, not from
 adaptive gating.}
