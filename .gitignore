@@ -1,0 +1,21 @@
+# LaTeX build artifacts
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.bbl
+paper/*.blg
+paper/*.fls
+paper/*.fdb_latexmk
+paper/*.synctex.gz
+paper/build.log
+
+# MATLAB
+*.asv
+*.m~
+slprj/
+
+# OS
+.DS_Store
+
+# Internal project notes (not for public repo)
+management/
