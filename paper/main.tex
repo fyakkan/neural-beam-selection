@@ -268,8 +268,8 @@ severity; $n_B$ large corresponds to only a handful of reliably measured beams.
 We note that this model drops beams independently and uniformly at random,
 whereas physical mmWave blockage is spatially \emph{correlated}---a single
 obstruction tends to occlude a contiguous set of beam directions. We adopt the
-i.i.d.\ model for simplicity and leave correlated-blockage robustness to future
-work (Section~\ref{sec:conclusion}).
+i.i.d.\ model as our primary setting and separately verify robustness under
+correlated (contiguous) blockage in Section~\ref{sec:corr}.
 
 \subsection{Architecture}
 The proposed network has two encoders. An RSRP encoder maps $\mathbf{x}$ to a
@@ -422,6 +422,30 @@ degrade slightly (mild overfitting), justifying the four-layer choice.
 \emph{UE density}: accuracy saturates by $\sim$$25\%$ of the training set
 ($3{,}375$ UEs, $90.6\%$), so the full $15$k set is comfortably in the saturated
 regime---confirming that the clean-data ceiling is not a data-limited artifact.
+
+\subsection{Robustness to correlated (contiguous) blockage}\label{sec:corr}
+To probe a more realistic impairment, we additionally evaluate \emph{correlated}
+blockage: rather than dropping the $n_B$ lost beams i.i.d., we drop a
+\emph{contiguous} block of $n_B$ sampled beams (a single obstruction occluding a
+contiguous angular region), reusing the same i.i.d.-trained models---i.e.\ a
+test-time distribution shift. Fig.~\ref{fig:corr} shows that the gated-fusion
+advantage not only persists but \emph{grows}: the gain rises to $+6.5$, $+7.3$,
+and $+7.0$ points at $n_B=6,8,10$ (vs.\ $+2.3$, $+2.0$, $+3.8$ under i.i.d.\
+blockage), well beyond the $\le\!2$-point per-draw standard deviation.
+Intuitively, a contiguous gap removes an entire local region of the RSRP profile
+that cannot be interpolated from neighboring samples, so the global position
+prior contributes more. The method is thus, if anything, \emph{more} valuable
+under the structured blockage expected in practice.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.9\columnwidth]{novel_contiguous_blockage.png}
+\caption{Additional robustness study: top-$K$ accuracy ($K{=}13$) under
+\emph{contiguous} (correlated) blockage of the sampled beams; error bars are
+$\pm1$ std over $10$ draws. The gated-fusion advantage over RSRP-only is larger
+than under i.i.d.\ blockage (cf.\ Fig.~\ref{fig:blockacc}).}
+\label{fig:corr}
+\end{figure}
 
 \subsection{Discussion}
 Our results delineate the operating regime of multi-modal beam selection. When

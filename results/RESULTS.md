@@ -90,3 +90,19 @@ Covered by the Task-1 figures (NN vs KNN vs Statistical vs Random across K=1..70
 and the §2 blockage Top-K curve. NN dominates all single-signal benchmarks across
 K on clean data; under blockage the gated fusion dominates RSRP-only across K
 (`novel_blockage_topk.png`).
+
+## 7. Correlated (contiguous) blockage — additional robustness study — `novel/exp_correlated_blockage.m`
+Same i.i.d.-trained nets, but the test-time blockage drops a CONTIGUOUS run of nB
+sampled beams (single obstruction) instead of i.i.d.-random. acc@K=13, mean±std,
+10 draws. The gated-fusion advantage **grows** vs the i.i.d. case.
+
+| # blocked | 0 | 2 | 4 | 6 | 8 | 10 | 12 |
+|---|---|---|---|---|---|---|---|
+| RSRP-only | 89.2±0.0 | 84.0±1.1 | 78.7±1.1 | 70.4±1.4 | 57.9±1.2 | 34.3±1.0 | 23.7±1.6 |
+| **Gated fusion** | 89.4±0.0 | 83.0±1.3 | 80.6±1.8 | 77.0±1.5 | 65.2±1.6 | 41.3±1.6 | 26.2±1.3 |
+| gain (pts) | +0.2 | −0.9 | +1.8 | **+6.5** | **+7.3** | **+7.0** | +2.5 |
+
+vs i.i.d. gains (§2): +2.3/+2.0/+3.8 at nB=6/8/10. A contiguous gap removes a whole
+local region of the RSRP profile (no nearby samples to interpolate), so the global
+position prior helps more. Figure: `novel_contiguous_blockage.png`. Presented as an
+additional study (paper §VI-E); the i.i.d. result remains the headline.
