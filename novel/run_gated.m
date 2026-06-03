@@ -1,14 +1,19 @@
 function R = run_gated(opts)
 %run_gated  Train + evaluate the proposed GATED multi-modal fusion beam selector,
-%           and compare its robustness to beam blockage against an RSRP-only model.
+%           and emit BOTH the blockage-robustness table (Table III) and the
+%           architecture-ablation table (Table IV) from a SINGLE shared set of
+%           blockage draws, so every cell shared between the tables is identical.
 %
-%   Both models are trained impairment-aware with the SAME blockage augmentation
-%   (0..bMax of the sampled beams dropped, plus light noise); they differ only in
-%   that the proposed model also ingests UE position through a gated residual path.
-%   Evaluated on the IDENTICAL data/splits/seeds as the baseline (loadBeamData,
-%   evalTopK). The headline result is robustness to mmWave beam blockage at no
-%   clean-data cost. Blockage results are averaged over nrep random draws and the
-%   standard deviation across draws is reported (error bars / +/- std).
+%   Models (all trained impairment-aware with the SAME blockage augmentation):
+%     netB  RSRP-only            (baseline/buildRegressionNet, single input)
+%     netF  gated residual fusion (proposed)            } loaded from gated_nets.mat
+%     netC  concatenation fusion  (ablation)            } loaded from
+%     netR  plain residual fusion (ablation, no gate)   } ablation_arch_nets.mat
+%
+%   Evaluated on the IDENTICAL data/splits/seeds as the baseline. Blockage results
+%   are averaged over nrep random draws; std across draws is reported. The 10
+%   blockage masks are pre-generated once (rng=7) and reused by every model, table,
+%   and figure -> Table III and Table IV agree exactly on their shared cells.
 %
 %   Options: doTraining(true) saveNet(true) maxEpochs(300) seed(1)
 %            bMaxTrain(8) sigMaxTrain(2) nrep(10) repLevel(8)
@@ -65,40 +70,53 @@ function R = run_gated(opts)
         L = load(netFile); netB = L.netB; netF = L.netF;
     end
 
-    % ---- blockage sweep: per-draw values retained for std ----
+    % ablation nets (concat, plain residual) for Table IV -- evaluated on the SAME draws
+    arcFile = fullfile(here,'ablation_arch_nets.mat'); haveArc = isfile(arcFile);
+    if haveArc, AA = load(arcFile); netC = AA.netC; netR = AA.netR; end
+
+    % ---- ONE shared set of blockage draws used by every model/table/figure ----
     blevels = 0:1:12;  K = 13;  nrep = opts.nrep;  nL = numel(blevels);
-    accB_all=zeros(nL,nrep); accF_all=accB_all; rsB_all=accB_all; rsF_all=accB_all; gate_all=accB_all;
     rng(7);
+    Xstore = cell(nL,1);
     for i = 1:nL
-        nb = blevels(i);
+        Xi = zeros(D.Ntest, D.numSampled, nrep);
         for r = 1:nrep
-            Xn = applyImpairment(D.XtestNN, 0, nb, 0, fv);   % only RNG consumer in the sweep
-            pB = predict(netB, Xn);
-            pF = predict(netF, Xn, D.posTest);
-            [aB,rB] = nnAccRsrp(pB, D, K);
-            [aF,rF] = nnAccRsrp(pF, D, K);
-            accB_all(i,r)=aB; rsB_all(i,r)=rB; accF_all(i,r)=aF; rsF_all(i,r)=rF;
-            g = predict(netF, Xn, D.posTest, Outputs="gate");
-            gate_all(i,r)=mean(g(:));
+            Xi(:,:,r) = applyImpairment(D.XtestNN, 0, blevels(i), 0, fv);  % only RNG consumer
         end
+        Xstore{i} = Xi;
     end
+
+    % ---- evaluate each model on the shared draws (no RNG consumed here) ----
+    [accB_all, rsB_all] = evalModelAcc(netB, Xstore, D, K, false);
+    [accF_all, rsF_all] = evalModelAcc(netF, Xstore, D, K, true);
     accB=mean(accB_all,2)';  accB_std=std(accB_all,0,2)';
     accF=mean(accF_all,2)';  accF_std=std(accF_all,0,2)';
     rsB =mean(rsB_all,2)';   rsB_std =std(rsB_all,0,2)';
     rsF =mean(rsF_all,2)';   rsF_std =std(rsF_all,0,2)';
+    if haveArc
+        accC_all = evalModelAcc(netC, Xstore, D, K, true);
+        accR_all = evalModelAcc(netR, Xstore, D, K, true);
+        accC=mean(accC_all,2)'; accC_std=std(accC_all,0,2)';
+        accR=mean(accR_all,2)'; accR_std=std(accR_all,0,2)';
+    end
+
+    % gate values (netF only) on the shared draws
+    gate_all = zeros(nL,nrep);
+    for i=1:nL, for r=1:nrep
+        g = predict(netF, Xstore{i}(:,:,r), D.posTest, Outputs="gate");
+        gate_all(i,r)=mean(g(:));
+    end, end
     gateMean=mean(gate_all,2)';
 
-    % position-only (KNN) reference + optimal (blockage-independent), via baseline evaluator
+    % position-only (KNN) reference + optimal (blockage-independent)
     R0 = evalTopK(predict(netB, D.XtestNN), D);
     accKNN13 = R0.accKNN(K);  rsrpKNN13 = R0.rsrpKNN(K);  rsrpOpt = R0.summary.rsrp_optimal_dB;
 
-    % ---- representative blockage level: full Top-K curves, mean +/- std over draws ----
-    % NOTE: evalTopK internally calls rng(111); seed each draw explicitly so the
-    % nrep draws are genuinely distinct (otherwise std would collapse to 0).
+    % ---- representative blockage level: full Top-K curves from the SAME masks ----
+    iR = find(blevels==opts.repLevel,1);
     accFc=zeros(nrep,NB); accBc=zeros(nrep,NB); accKNNc=[];
     for r = 1:nrep
-        rng(1000+r);
-        Xrep = applyImpairment(D.XtestNN, 0, opts.repLevel, 0, fv);
+        Xrep = Xstore{iR}(:,:,r);
         Rf = evalTopK(predict(netF, Xrep, D.posTest), D);
         Rb = evalTopK(predict(netB, Xrep), D);
         accFc(r,:)=Rf.accNeural; accBc(r,:)=Rb.accNeural;
@@ -116,28 +134,47 @@ function R = run_gated(opts)
         'accRSRP',accB,'accRSRP_std',accB_std,'accFusion',accF,'accFusion_std',accF_std, ...
         'rsrpRSRP',rsB,'rsrpRSRP_std',rsB_std,'rsrpFusion',rsF,'rsrpFusion_std',rsF_std, ...
         'gateMean',gateMean,'accKNN13',accKNN13,'rsrpKNN13',rsrpKNN13,'rsrpOpt',rsrpOpt);
+    if haveArc
+        R.accConcat=accC; R.accConcat_std=accC_std; R.accResidual=accR; R.accResidual_std=accR_std;
+    end
     R.acc_clean_RSRP = accB(1); R.acc_clean_Fusion = accF(1);
     save(fullfile(metDir,'novel_results.mat'),'R');
     fid=fopen(fullfile(metDir,'novel_metrics.json'),'w'); fwrite(fid, jsonencode(R, PrettyPrint=true)); fclose(fid);
 
-    % ---- console summary (mean +/- std) ----
-    fprintf('\n======= GATED FUSION: BLOCKAGE ROBUSTNESS (acc@K=%d, mean+/-std over %d draws) =======\n', K, nrep);
-    fprintf('%8s | %-14s | %-14s | gain\n','#blocked','RSRP-only','GatedFus');
-    for i=1:nL
-        fprintf('%8d | %5.1f +/- %3.1f   | %5.1f +/- %3.1f   | %+.1f\n', ...
-            blevels(i), accB(i),accB_std(i), accF(i),accF_std(i), accF(i)-accB(i));
+    % ---- console: LaTeX rows for BOTH tables (shared draws => consistent) ----
+    iiiC = ismember(blevels,[0 2 4 6 8 10 12]);   % Table III columns
+    ivC  = ismember(blevels,[0 6 8 10 12]);        % Table IV columns
+    fprintf('\n===== SHARED-DRAW EVAL (acc@K=%d, mean+/-std over %d draws) =====\n', K, nrep);
+    fprintf('Table III (cols 0 2 4 6 8 10 12):\n');
+    fprintf('  RSRP-only & %s \\\\\n', latexRow(accB(iiiC),accB_std(iiiC)));
+    fprintf('  Gated fusion & %s \\\\\n', latexRow(accF(iiiC),accF_std(iiiC)));
+    fprintf('  Gain (pts) & %s \\\\\n', gainRow(accF(iiiC)-accB(iiiC)));
+    if haveArc
+        fprintf('Table IV (cols 0 6 8 10 12):\n');
+        fprintf('  RSRP-only      & %s \\\\\n', latexRow(accB(ivC),accB_std(ivC)));
+        fprintf('  Concatenation  & %s \\\\\n', latexRow(accC(ivC),accC_std(ivC)));
+        fprintf('  Plain residual & %s \\\\\n', latexRow(accR(ivC),accR_std(ivC)));
+        fprintf('  Gated residual & %s \\\\\n', latexRow(accF(ivC),accF_std(ivC)));
     end
-    fprintf('clean parity gain: %+.1f pts | mean gate ~ %.2f | KNN(position) acc@K=%d=%.1f%%\n', ...
+    fprintf('clean parity gain: %+.1f | mean gate ~ %.2f | KNN acc@K=%d=%.1f%%\n', ...
         accF(1)-accB(1), mean(gateMean), K, accKNN13);
-    fprintf('LaTeX Table III rows (mean$\\pm$std):\n');
-    fprintf('  RSRP-only  : %s\n', latexRow(accB(1:2:end),accB_std(1:2:end)));
-    fprintf('  GatedFusion: %s\n', latexRow(accF(1:2:end),accF_std(1:2:end)));
-    fprintf('=====================================================================\n');
+    fprintf('================================================================\n');
 end
 
 % ---------------------------------------------------------------------------
+function [accAll, rsAll] = evalModelAcc(net, Xstore, D, K, twoInput)
+    nL=numel(Xstore); nrep=size(Xstore{1},3);
+    accAll=zeros(nL,nrep); rsAll=zeros(nL,nrep);
+    for i=1:nL
+        for r=1:nrep
+            Xn=Xstore{i}(:,:,r);
+            if twoInput, p=predict(net,Xn,D.posTest); else, p=predict(net,Xn); end
+            [accAll(i,r), rsAll(i,r)] = nnAccRsrp(p, D, K);
+        end
+    end
+end
+
 function [acc, rsrp] = nnAccRsrp(pred, D, K)
-    % NN-only Top-K accuracy (%) and average actual RSRP (dB) at a single K
     Nte = D.Ntest; trueOpt = D.optTest(:); R = D.rsrpTest;
     [~, ord] = sort(pred, 2, 'descend');
     hit = 0; rs = 0;
@@ -151,14 +188,17 @@ function [acc, rsrp] = nnAccRsrp(pred, D, K)
 end
 
 function s = latexRow(m, sd)
-    parts = arrayfun(@(a,b) sprintf('$%.1f\\pm%.1f$', a, b), m, sd, 'uni', 0);
+    parts = arrayfun(@(a,b) sprintf('\\ms{%.1f}{%.1f}', a, b), m, sd, 'uni', 0);
+    s = strjoin(parts, ' & ');
+end
+function s = gainRow(g)
+    parts = arrayfun(@(x) sprintf('$%+.1f$', x), g, 'uni', 0);
     s = strjoin(parts, ' & ');
 end
 
 function makeGatedFigures(bl, accB, accBs, accF, accFs, accKNN, rsB, rsBs, rsF, rsFs, rsKNN, rsOpt, gateMean, rep, K, figDir)
     red=[0.85 0.1 0.1]; blue=[0 0.45 0.74]; org=[0.9 0.6 0];
 
-    % Fig 2 (paper): accuracy vs blockage, with +/- std error bars
     f1=figure('Visible','off','Position',[100 100 720 500]); hold on; grid on;
     errorbar(bl, accF, accFs, '-o', LineWidth=2, Color=red,  CapSize=4);
     errorbar(bl, accB, accBs, '-*', LineWidth=2, Color=blue, CapSize=4);
@@ -168,7 +208,6 @@ function makeGatedFigures(bl, accB, accBs, accF, accFs, accKNN, rsB, rsBs, rsF, 
     legend('Gated Fusion (RSRP+Pos)','RSRP-only','Location','northeast');
     exportgraphics(f1, fullfile(figDir,'novel_blockage_accuracy.png'), Resolution=200); close(f1);
 
-    % avg RSRP vs blockage, with error bars (not a numbered paper figure)
     f2=figure('Visible','off','Position',[100 100 720 500]); hold on; grid on;
     errorbar(bl, rsF, rsFs, '-o', LineWidth=2, Color=red,  CapSize=4);
     errorbar(bl, rsB, rsBs, '-*', LineWidth=2, Color=blue, CapSize=4);
@@ -177,7 +216,6 @@ function makeGatedFigures(bl, accB, accBs, accF, accFs, accKNN, rsB, rsBs, rsF, 
     title('Average RSRP vs Beam Blockage (mean \pm std)'); legend('Gated Fusion','RSRP-only','Location','southwest');
     exportgraphics(f2, fullfile(figDir,'novel_blockage_rsrp.png'), Resolution=200); close(f2);
 
-    % Fig 3 (paper): Top-K curve at representative blockage, with +/- std band
     Kx=rep.Kx;
     f3=figure('Visible','off','Position',[100 100 720 500]); hold on; grid on;
     fill([Kx fliplr(Kx)], [rep.Fm+rep.Fs fliplr(rep.Fm-rep.Fs)], red,  FaceAlpha=0.15, EdgeColor='none');
@@ -191,7 +229,6 @@ function makeGatedFigures(bl, accB, accBs, accF, accFs, accKNN, rsB, rsBs, rsF, 
     legend([h1 h2 h3],'Gated Fusion','RSRP-only','KNN (position)','Location','southeast');
     exportgraphics(f3, fullfile(figDir,'novel_blockage_topk.png'), Resolution=200); close(f3);
 
-    % Fig 4 (paper): gate behaviour (honest: ~constant)
     f4=figure('Visible','off','Position',[100 100 720 460]); grid on; hold on;
     plot(bl, gateMean, '-d', LineWidth=2, Color=[0.2 0.5 0.2]);
     ylim([0 1]);

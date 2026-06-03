@@ -42,21 +42,23 @@ Per-cell std also in `results/metrics/novel_metrics.json`.
 ## 3. Architecture ablation (gate necessity) — `novel/exp_ablation_arch.m`
 acc@K=13 vs # blocked beams; all fusion variants trained with identical aug.
 
-Mean ± std over 10 draws.
+Mean ± std over 10 draws. **Tables III and IV share one set of 10 blockage draws**
+(scored by the single evaluator `run_gated.m`), so the RSRP-only and Gated cells here
+match §2 exactly.
 
 | # blocked | RSRP-only | Concat | Residual (no gate) | **Gated** |
 |---|---|---|---|---|
 | 0 (clean) | 89.2±0.0 | 84.4±0.0 | 88.0±0.0 | **89.4±0.0** |
-| 6 | 70.7±0.6 | 70.4±1.5 | 72.1±1.4 | 72.3±1.6 |
-| 8 | 55.5±2.7 | 60.5±1.6 | 58.7±2.1 | 58.7±2.4 |
-| 10 | 36.2±2.8 | **45.5±1.7** | 40.3±2.3 | 40.1±2.1 |
-| 12 | 22.6±1.7 | 29.4±2.5 | 25.0±2.1 | 25.1±1.7 |
+| 6 | 69.8±1.5 | 69.7±1.7 | 71.7±1.8 | 72.1±1.7 |
+| 8 | 56.0±1.6 | 59.8±1.5 | 58.0±2.1 | 57.9±2.0 |
+| 10 | 35.9±2.4 | **45.9±1.2** | 39.7±1.8 | 39.7±1.7 |
+| 12 | 22.3±0.9 | 29.1±1.2 | 25.0±1.4 | 24.9±1.4 |
 
 - **Gate justified:** it preserves clean parity (89.4 vs no-gate 88.0) at equal
   blockage robustness. The learned gate is ≈0.78 (near-constant) — a learned
   down-weighting of the position correction, NOT an adaptive open/close.
 - **Tradeoff:** ungated **concatenation** yields the largest heavy-blockage gains
-  (+9 @10 blocked) but costs ~4.8 pts on clean data. The gated residual is the
+  (+10 @10 blocked) but costs ~4.8 pts on clean data. The gated residual is the
   best no-regret operating point.
 
 ## 4. Negative results on clean RSRP (motivate the blockage framing)

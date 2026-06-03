@@ -334,7 +334,11 @@ $K$ range. Quantifying significance across the $10$ draws (Table~\ref{tab:blocka
 the small differences at $n_B\le 4$ ($+0.2$, $-1.1$, $+0.6$) lie within one
 standard deviation and are not statistically meaningful, whereas the gains for
 $n_B\ge 5$ ($+2.0$ to $+3.8$ over $n_B\in[6,12]$) consistently exceed the
-per-draw standard deviation and constitute the real effect.
+per-draw standard deviation and constitute the real effect. (The $\pm0.0$ std at
+$n_B{=}0$ is exact: with no beams blocked the clean input is identical across
+draws.) Note that the models are trained with $n_B\sim\mathcal{U}\{0,\dots,8\}$,
+so the results at $n_B\in\{10,12\}$ additionally probe generalization \emph{beyond}
+the trained blockage range, where the fusion advantage is largest.
 
 \begin{table*}[t]
 \centering
@@ -379,7 +383,7 @@ provides most of the blockage robustness but costs $1.2$ points on clean data
 ($88.0\%$ vs.\ $89.2\%$). The gate restores clean parity ($89.4\%$) at equal
 blockage robustness---this is precisely the role of the gate. Interestingly,
 ungated \emph{concatenation} achieves the largest heavy-blockage gains
-($45.5\%$ vs.\ $36.2\%$ at $n_B=10$) but sacrifices $4.8$ points on clean data,
+($45.9\%$ vs.\ $35.9\%$ at $n_B=10$) but sacrifices $4.8$ points on clean data,
 i.e.\ it is \emph{not} no-regret. The gated residual occupies the best
 clean-vs-robustness trade-off. Notably, the learned gate converges to a nearly
 constant value ($\approx0.78$; Fig.~\ref{fig:gate}): rather than ``opening''
@@ -396,10 +400,10 @@ correction that preserves clean accuracy while retaining robustness.
 \toprule
 \# blocked & 0 & 6 & 8 & 10 & 12 \\
 \midrule
-RSRP-only            & \ms{89.2}{0.0} & \ms{70.7}{0.6} & \ms{55.5}{2.7} & \ms{36.2}{2.8} & \ms{22.6}{1.7} \\
-Concatenation        & \ms{84.4}{0.0} & \ms{70.4}{1.5} & \ms{60.5}{1.6} & \textbf{\ms{45.5}{1.7}} & \ms{29.4}{2.5} \\
-Plain residual       & \ms{88.0}{0.0} & \ms{72.1}{1.4} & \ms{58.7}{2.1} & \ms{40.3}{2.3} & \ms{25.0}{2.1} \\
-\textbf{Gated residual} & \textbf{\ms{89.4}{0.0}} & \ms{72.3}{1.6} & \ms{58.7}{2.4} & \ms{40.1}{2.1} & \ms{25.1}{1.7} \\
+RSRP-only            & \ms{89.2}{0.0} & \ms{69.8}{1.5} & \ms{56.0}{1.6} & \ms{35.9}{2.4} & \ms{22.3}{0.9} \\
+Concatenation        & \ms{84.4}{0.0} & \ms{69.7}{1.7} & \ms{59.8}{1.5} & \textbf{\ms{45.9}{1.2}} & \ms{29.1}{1.2} \\
+Plain residual       & \ms{88.0}{0.0} & \ms{71.7}{1.8} & \ms{58.0}{2.1} & \ms{39.7}{1.8} & \ms{25.0}{1.4} \\
+\textbf{Gated residual} & \textbf{\ms{89.4}{0.0}} & \ms{72.1}{1.7} & \ms{57.9}{2.0} & \ms{39.7}{1.7} & \ms{24.9}{1.4} \\
 \bottomrule
 \end{tabular}
 \end{table}
