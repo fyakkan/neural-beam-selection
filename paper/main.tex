@@ -71,9 +71,13 @@ LiDAR, radar, vision, or sub-6\,GHz channels~\cite{klautau2019lidar,
 rezaie2022location,alkhateeb2023deepsense,demirhan2022radar,deng2025scanbest};
 they are robust to RF impairments but typically achieve lower peak accuracy.
 A widely used in-band formulation, distributed as a reference example by
-MathWorks, casts beam selection as RSRP-profile \emph{regression}: a neural
-network maps a downsampled subset of RSRP measurements to the full per-beam-pair
-RSRP profile, after which only the top-$K$ predicted beams are swept.
+MathWorks,\footnote{This is the project's designated benchmark (Option~B,
+\emph{Neural Network for Beam Selection}).} casts beam selection as RSRP-profile
+\emph{regression}: a neural network maps a downsampled subset of RSRP
+measurements to the full per-beam-pair RSRP profile, after which only the top-$K$
+predicted beams are swept. This example was \emph{recently updated} from an
+earlier position-input classifier to the regression formulation we reproduce; we
+reconcile the two versions in Section~\ref{sec:benchmark}.
 
 In this work we take this regression benchmark as our starting point and ask a
 simple question: \emph{does adding the UE position---already available at the
@@ -95,7 +99,11 @@ impairment-aware training procedure (Section~\ref{sec:method}). It is a
 \emph{no-regret} design: it matches the RSRP-only model on clean data and
 improves top-$K$ accuracy by $2$--$4$ points under beam blockage. An architecture
 ablation shows the gate is what preserves the clean-data parity
-(Section~\ref{sec:results}).
+(Section~\ref{sec:results}). As a finding, the learned gate converges to a
+near-constant scale: in this single-impairment setting a fixed-scale residual
+position path is sufficient and no-regret, and genuinely adaptive gating would be
+expected only when position reliability \emph{itself} varies---a direction we
+outline in Section~\ref{sec:conclusion}.
 \end{itemize}
 
 The complete MATLAB implementation, trained models, and the \LaTeX{} source of
@@ -104,7 +112,8 @@ this paper are publicly available.\footnote{\url{https://github.com/REPLACE-WITH
 \section{Related Work (Literature Review)}\label{sec:related}
 Early ML beam-selection work posed the task as classification of the best beam
 (pair) from side information such as UE position or LiDAR
-\cite{heng2019mlbeam,klautau2018itadata,klautau2019lidar}. Position/location-aided
+\cite{heng2019mlbeam,klautau2018itadata,klautau2019lidar}, a classification line
+that continues on real V2I data~\cite{biliaminu2024v2i}. Position/location-aided
 prediction was extended to 3D beam selection with orientation
 information~\cite{rezaie2022location}, and to real-world GPS-based prediction on
 the DeepSense~6G testbed~\cite{alkhateeb2023deepsense}. Out-of-band approaches
@@ -114,7 +123,8 @@ overhead reductions (e.g.\ $\sim$79\% in~\cite{sim2020sub6}). Sensing-aided
 prediction using radar~\cite{demirhan2022radar} and LiDAR~\cite{jiang2023lidar}
 has been demonstrated on real V2I data, and waveform-learning approaches such as
 DeepBeam~\cite{polese2021deepbeam} reduce beam-management latency without
-coordination. A parallel line predicts \emph{blockage} for proactive handoff
+coordination, while entropy-based probing-beam selection cuts measurement
+overhead~\cite{meng2024entropy}. A parallel line predicts \emph{blockage} for proactive handoff
 \cite{alkhateeb2018blockage,wu2022blockage}, and recent work exploits temporal
 correlation for vehicular beam management~\cite{oliveira2025temporal}. Surveys
 \cite{xue2024survey} and the 3GPP study on AI/ML for the NR air
@@ -148,6 +158,8 @@ Demirhan \& Alkhateeb~\cite{demirhan2022radar} (2022) & Radar & DL beam predicti
 Jiang \emph{et al.}~\cite{jiang2023lidar} (2023) & LiDAR & DL future-beam prediction & $\sim$90\% overhead reduction (V2I) \\
 Wu \emph{et al.}~\cite{wu2022blockage} (2022) & In-band power & Moving-blockage prediction & $>$85\% blockage accuracy \\
 Oliveira \emph{et al.}~\cite{oliveira2025temporal} (2025) & Position + time & RNN temporal beam mgmt & Up to 50\% overhead reduction \\
+Biliaminu \emph{et al.}~\cite{biliaminu2024v2i} (2024) & Position/geo & ML multiclass beam classification & Beam prediction on real V2I (DeepSense) \\
+Meng \emph{et al.}~\cite{meng2024entropy} (2024) & RSRP/probing & Entropy-based probing + DL prediction & Reduced probing/measurement overhead \\
 \textbf{This work} & \textbf{Sparse RSRP + position} & \textbf{Gated residual fusion} & \textbf{No clean-data cost; $+2$--$4$ pts under blockage} \\
 \bottomrule
 \end{tabular}
@@ -197,14 +209,24 @@ $81.4\%$ overhead reduction---and $97.4\%$ at $K=30$. Its average RSRP at $K=13$
 is $-23.21$\,dB, within $0.24$\,dB of the exhaustive optimum ($-22.97$\,dB) and
 well above KNN ($-25.29$\,dB). The neural method dominates KNN, Statistical, and
 Random across all $K$, reproducing the published behavior and validating our
-pipeline. We emphasize that this is a faithful \emph{re-implementation} of the
-regression benchmark rather than a re-run of shipped code: the reference
-MathWorks example uses a wider $64$--$128$--$256$--$128$ ReLU network with
-global-max input normalization on a $20{,}000/700$ split, whereas we use a
-compact width-$96$ leaky-ReLU $z$-score MLP on the bundled $15{,}000/500$ dataset.
-Despite these differences, our re-implementation reproduces the published
-operating point ($90\%$ top-$K$ accuracy at $K=13$), confirming functional
-equivalence.
+pipeline.
+
+\emph{Reconciliation with the original formulation.} The MathWorks example was
+originally a position-input multi-class \emph{classifier}---predicting the optimal
+beam-pair index directly from the UE's 3D coordinates---but has since been updated
+to the RSRP-profile \emph{regression} formulation reproduced above. We adopt the
+current (regression) version for two reasons: it is the live reference, and it
+cleanly separates the in-band (RSRP) and side-information (position) modalities,
+which is exactly what our fusion study requires (position becomes an \emph{added}
+modality rather than the sole input). We also re-implement rather than re-run the
+shipped code: the online example uses a wider $64$--$128$--$256$--$128$ ReLU
+network with global-max input normalization on a $20{,}000/700$ split, whereas we
+use a compact width-$96$ leaky-ReLU $z$-score MLP on the $15{,}000/500$
+pre-recorded dataset bundled with the example. Despite these differences, our
+re-implementation reproduces the published operating point ($90\%$ top-$K$
+accuracy at $K=13$), confirming functional equivalence; the RSRP-only reference
+used throughout our experiments shares this width-$96$ architecture, so all
+comparisons are internally fair.
 
 \begin{table}[t]
 \centering
@@ -313,7 +335,8 @@ use blockage augmentation ($n_B\sim\mathcal{U}\{0,\dots,8\}$). Blockage-robustne
 results are averaged over $10$ independent random blockage draws (we report the
 mean and standard deviation). Experiments run in MATLAB R2025b (Deep Learning, 5G,
 Communications, Phased Array System, Statistics and Machine Learning, DSP System,
-and Signal Processing Toolboxes) on CPU.
+and Signal Processing Toolboxes); the networks are compact enough to train on CPU
+in a few minutes each (no GPU required).
 
 \subsection{Robustness to beam blockage}
 Fig.~\ref{fig:blockacc} and Table~\ref{tab:blockage} report top-$K$ accuracy
@@ -388,7 +411,12 @@ i.e.\ it is \emph{not} no-regret. The gated residual occupies the best
 clean-vs-robustness trade-off. Notably, the learned gate converges to a nearly
 constant value ($\approx0.78$; Fig.~\ref{fig:gate}): rather than ``opening''
 adaptively with blockage, it learns a fixed down-weighting of the position
-correction that preserves clean accuracy while retaining robustness.
+correction that preserves clean accuracy while retaining robustness. We therefore
+frame the gate's role as learning the (near-constant) optimal position-mixing
+scale rather than performing per-sample adaptation: the contribution is a
+no-regret residual fusion, and we expect genuinely adaptive gating to matter only
+when position reliability \emph{itself} varies across users (e.g.\ GPS outages),
+which we leave to future work (Section~\ref{sec:conclusion}).
 
 \begin{table}[t]
 \centering
@@ -465,6 +493,24 @@ clean-data accuracy. The trade-off exposed in Table~\ref{tab:ablarch} also offer
 a design knob: deployments dominated by blockage may prefer concatenation for its
 larger heavy-blockage gains, accepting a clean-data penalty.
 
+\subsection{Positioning against the state of the art}
+A direct numerical ranking against the works in Table~\ref{tab:related} is
+confounded by differing scenarios, datasets, and codebooks (e.g.\ real-world V2X
+with cameras/LiDAR/radar~\cite{alkhateeb2023deepsense,jiang2023lidar,demirhan2022radar}
+vs.\ our TR~38.901 SSB-RSRP setting), so we contextualize rather than rank.
+Side-information methods report strong overhead reductions---$\sim$79\% from
+sub-6\,GHz~\cite{sim2020sub6} and $\sim$90\% from LiDAR in V2I~\cite{jiang2023lidar}---but
+rely on rich external sensors and largely vehicular data, while position-only
+prediction~\cite{rezaie2022location,biliaminu2024v2i} trades peak accuracy for
+robustness. Our reproduced benchmark already attains an $81.4\%$ overhead
+reduction at $90\%$ top-$K$ from in-band RSRP alone; our contribution is
+\emph{orthogonal} to the accuracy-focused fusion literature: a $+2$ to $+7$-point
+accuracy retention under beam blockage at \emph{no} clean-data cost, using only
+the already-available UE position rather than added sensors. To our knowledge,
+this no-regret, reliability-oriented fusion of position with sparse RSRP---and the
+explicit characterization of \emph{when} a second modality helps---is not covered
+by the surveyed works.
+
 \section{Conclusion}\label{sec:conclusion}
 We reproduced the SSB-RSRP regression benchmark for 5G NR mmWave beam selection
 ($90\%$ top-$K$ accuracy at $K=13$) and studied position-aided multi-modal
@@ -474,8 +520,11 @@ position yields a no-regret robustness improvement: clean-data parity with a
 consistent $2$--$4$-point top-$K$ accuracy gain under beam blockage. An ablation
 attributes the no-regret property to the learned gate. Future work includes
 joint optimization of the measured-beam subset with the fusion network,
-evaluation on real multi-modal datasets such as DeepSense~6G, and extending the
-gate to additional impairments (quantization, mobility).
+evaluation on real multi-modal datasets such as DeepSense~6G, and---since the
+learned gate is near-constant when position is always reliable---studying
+\emph{variable position reliability} (e.g.\ GPS noise/outage), where an adaptive
+gate that suppresses the position path per-user is expected to provide gains
+beyond the fixed-scale residual reported here.
 
 \bibliographystyle{IEEEtran}
 \bibliography{ref}
