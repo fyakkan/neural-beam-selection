@@ -18,7 +18,7 @@ K=13** (≈**81.4%** beam-sweep overhead reduction), with average RSRP within
 **Proposed method:** a gated residual network fuses the 14 RSRP measurements with
 the UE 3D position: `out = tanh(base(RSRP) + gate·corr(position))`. It is a
 **no-regret** design — it matches the RSRP-only model on clean data and improves
-top-K accuracy by **+2 to +3 points under i.i.d. beam blockage** (mean across 5
+top-K accuracy by **+2 to +3.2 points under i.i.d. beam blockage** (mean across 5
 training seeds; when 6–12 of the 14 measured beams are lost), rising to **~+7
 points under correlated/contiguous blockage**.
 

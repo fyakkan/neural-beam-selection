@@ -72,7 +72,7 @@ now uses these across-seed error bars (`novel/make_seedvar_fig.m`). Raw per-seed
   (std 0.4 vs 0.8). No clean-data cost survives the seed average.
 - **Blockage gains survive seeds:** at nB∈[6,12] every gain (+2.3 to +3.2) exceeds **2× its
   across-seed std** → real, not an init artifact. Low-blockage deltas (nB≤4) are small/inconsistent.
-- Honest headline: **+2 to +3 pts (i.i.d., across 5 seeds)**, vs the single-seed §2 view (+2 to +3.8).
+- Honest headline: **+2 to +3.2 pts (i.i.d., across 5 seeds)**, vs the single-seed §2 view (+2 to +3.8).
   per-seed clean RSRP-only acc = [89.2 89.0 87.4 89.4 88.4]; clean fusion = [89.4 88.6 88.6 89.2 89.0].
 
 ## 3. Architecture ablation (gate necessity) — `novel/exp_ablation_arch.m`

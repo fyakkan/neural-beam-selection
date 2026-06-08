@@ -48,7 +48,7 @@ correction is added to the RSRP-based estimate through a learned gate. The learn
 gate preserves clean-data accuracy at no cost---restoring full parity with the
 RSRP-only model, whereas an ungated residual forfeits roughly a point---while the
 residual path delivers a consistent top-$K$ accuracy gain once measured beams are
-lost: $+2$ to $+3$ points (mean across five training seeds) under i.i.d.\ input
+lost: $+2$ to $+3.2$ points (mean across five training seeds) under i.i.d.\ input
 dropout when $6$--$12$ of the $14$ measured beams are missing, rising to about
 $+7$ points under correlated (contiguous) loss, the regime closest to physical
 blockage. We stress that this
@@ -111,7 +111,7 @@ $89.4\%$, matching the RSRP-only reference) that an ungated residual forfeits
 ($88.0\%$), so the position modality can only help and never hurt. (By \emph{no-regret} we mean only that adding the
 position modality incurs no clean-data accuracy penalty relative to the RSRP-only
 model---not the online-learning notion of regret.) On top of this parity, the
-residual position path improves top-$K$ accuracy by $+2$ to $+3$ points (mean
+residual position path improves top-$K$ accuracy by $+2$ to $+3.2$ points (mean
 across five seeds, each gain exceeding twice its across-seed std) under i.i.d.\
 measurement loss, rising to about $+7$ points under correlated (contiguous) loss
 (Section~\ref{sec:results}). As a finding, the learned gate
@@ -189,7 +189,7 @@ Klautau \emph{et al.}~\cite{klautau2019lidar} (2019) & LiDAR & DL beam selection
 Sim \emph{et al.}~\cite{sim2020sub6} (2020) & Sub-6\,GHz & DL beam selection (NR/6G) & $\sim$79\% sweep-overhead reduction \\
 Alrabeiah \& Alkhateeb~\cite{alrabeiah2020sub6blockage} (2020) & Sub-6\,GHz & DL beam + blockage prediction & $>$90\% blockage prediction \\
 \midrule
-\textbf{This work} & \textbf{Sparse RSRP + position} & \textbf{Gated residual fusion} & \textbf{No clean-data cost; $+2$--$3$ pts (i.i.d.), up to $\sim$$+7$ (contiguous)} \\
+\textbf{This work} & \textbf{Sparse RSRP + position} & \textbf{Gated residual fusion} & \textbf{No clean-data cost; $+2$ to $+3.2$ pts (i.i.d.), up to $\sim$$+7$ (contiguous)} \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -234,9 +234,11 @@ Statistical and Random baselines.
 Table~\ref{tab:benchmark} reports the reproduced metrics and Fig.~\ref{fig:base}
 the top-$K$ accuracy curves. The neural predictor reaches $90.0\%$ top-$K$
 accuracy at $K=13$---sweeping fewer than one quarter of the $70$ beam pairs, an
-$81.4\%$ overhead reduction---and $97.4\%$ at $K=30$. Its average RSRP at $K=13$
-is $-23.21$\,dB, within $0.24$\,dB of the exhaustive optimum ($-22.97$\,dB) and
-well above KNN ($-25.29$\,dB). The neural method dominates KNN, Statistical, and
+$81.4\%$ overhead reduction---and $97.4\%$ at $K=30$. At the low-$K$ points listed
+in the project brief it attains $26.0\%$, $43.4\%$, $55.2\%$, and $72.4\%$ for
+$K=1,2,3,5$ (Table~\ref{tab:benchmark}), each far above the position-only KNN.
+Its average RSRP at $K=13$ is $-23.21$\,dB, within $0.24$\,dB of the exhaustive
+optimum ($-22.97$\,dB) and well above KNN ($-25.29$\,dB). The neural method dominates KNN, Statistical, and
 Random across all $K$, reproducing the published behavior and validating our
 pipeline.
 
@@ -264,17 +266,22 @@ are internally fair.
 
 \begin{table}[t]
 \centering
-\caption{Reproduced benchmark metrics on the $15{,}000/500$ split. The neural
-predictor first reaches $90\%$ top-$K$ accuracy at $K=13$; rows are reported at
-$K{=}13$ unless noted otherwise.}
+\caption{Reproduced benchmark metrics on the $15{,}000/500$ split. Top-$K$
+accuracy is listed at the project brief's $K{=}1,2,3,5$ points and at the
+$K{=}13$ operating point (where the predictor first reaches $90\%$); other rows
+are at $K{=}13$ unless noted.}
 \label{tab:benchmark}
 \begin{tabular}{@{}lccc@{}}
 \toprule
 Metric & Neural & KNN & Optimal \\
 \midrule
-Overhead reduction @\,$K{=}13$ & \textbf{81.4\%} & -- & -- \\
+Top-$K$ accuracy @\,$K{=}1$ & 26.0\% & 4.6\% & -- \\
+Top-$K$ accuracy @\,$K{=}2$ & 43.4\% & 10.4\% & -- \\
+Top-$K$ accuracy @\,$K{=}3$ & 55.2\% & 14.2\% & -- \\
+Top-$K$ accuracy @\,$K{=}5$ & 72.4\% & 21.8\% & -- \\
 Top-$K$ accuracy @\,$K{=}13$ & \textbf{90.0\%} & 37.8\% & -- \\
 Top-$K$ accuracy @\,$K{=}30$ & 97.4\% & -- & -- \\
+Overhead reduction @\,$K{=}13$ & \textbf{81.4\%} & -- & -- \\
 Avg.\ RSRP @\,$K{=}13$ (dB) & \textbf{$-23.21$} & $-25.29$ & $-22.97$ \\
 \bottomrule
 \end{tabular}
@@ -452,7 +459,10 @@ advantage is largest.
 reported as mean$\pm$std \emph{across 5 random training seeds} (each per-seed value
 is itself averaged over 10 i.i.d.\ blockage draws). The across-seed std therefore
 captures training-initialization and augmentation-stream variance---which a
-per-draw std does not---so the gains are shown to survive the choice of seed.}
+per-draw std does not---so the gains are shown to survive the choice of seed. The
+gain row is the mean of per-seed (fusion$-$RSRP-only) differences; since each row
+is rounded independently, a gain cell can differ from the rounded row difference
+by $0.1$ (e.g.\ at $n_B{=}10$).}
 \label{tab:blockage}
 \footnotesize
 \begin{tabular}{@{}lccccccc@{}}
@@ -500,7 +510,8 @@ accuracy gain---it grows with impairment severity.
 \centering
 \caption{Average RSRP (dB) of the \emph{selected} beam after the top-$K{=}13$
 sweep vs.\ number of blocked input beams (i.i.d., mean over 10 draws). Higher is
-better; the exhaustive optimum is $-22.97$\,dB.}
+better; the exhaustive optimum is $-22.97$\,dB. Gains are computed from
+unrounded values.}
 \label{tab:blockrsrp}
 \begin{tabular}{@{}lccccc@{}}
 \toprule
@@ -653,7 +664,7 @@ single-modality predictor is at the achievable ceiling, but that a gated residua
 fusion of sparse RSRP and UE position yields a no-regret robustness improvement:
 clean-data parity---the learned gate restoring the $\sim$$1$ point an ungated
 residual would forfeit---together with a consistent top-$K$ accuracy gain when
-input measurements are lost ($+2$ to $+3$ points, mean across five seeds, under
+input measurements are lost ($+2$ to $+3.2$ points, mean across five seeds, under
 i.i.d.\ dropout, rising to about $+7$ points under correlated/contiguous loss) and
 a matching improvement in selected-beam RSRP (up to $+1.3$\,dB). An ablation attributes the no-regret
 property to the learned gate, and shows the gate converges to a near-constant
