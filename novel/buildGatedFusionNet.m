@@ -25,6 +25,7 @@ function net = buildGatedFusionNet(numSampled, numPos, numBeamPairs, opts)
         opts.gateWidth (1,1) double = 64
         opts.leak      (1,1) double = 0.01
         opts.useGate   (1,1) logical = true   % false -> plain residual: out=tanh(base+corr)
+        opts.posNorm   (1,:) char   = 'zscore' % position-branch input normalization
     end
     L = opts.leak;
 
@@ -35,7 +36,7 @@ function net = buildGatedFusionNet(numSampled, numPos, numBeamPairs, opts)
     baseHead = fullyConnectedLayer(numBeamPairs, Name="base");          % primary RSRP estimate
 
     posBranch = [
-        featureInputLayer(numPos, Name="pos", Normalization="zscore")
+        featureInputLayer(numPos, Name="pos", Normalization=opts.posNorm)
         fullyConnectedLayer(opts.posWidth, Name="p_fc1");  leakyReluLayer(L, Name="p_relu1")
         fullyConnectedLayer(opts.posWidth, Name="p_fc2");  leakyReluLayer(L, Name="p_relu2") ];
     corrHead = fullyConnectedLayer(numBeamPairs, Name="corr");          % position correction
