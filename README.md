@@ -18,13 +18,18 @@ K=13** (≈**81.4%** beam-sweep overhead reduction), with average RSRP within
 **Proposed method:** a gated residual network fuses the 14 RSRP measurements with
 the UE 3D position: `out = tanh(base(RSRP) + gate·corr(position))`. It is a
 **no-regret** design — it matches the RSRP-only model on clean data and improves
-top-K accuracy by **+2 to +4 points under beam blockage** (when 6–12 of the 14
-measured beams are lost).
+top-K accuracy by **+2 to +3 points under i.i.d. beam blockage** (mean across 5
+training seeds; when 6–12 of the 14 measured beams are lost), rising to **~+7
+points under correlated/contiguous blockage**.
+
+Top-K=13 accuracy, **mean ± std across 5 random training seeds** (each averaged
+over 10 i.i.d. blockage draws):
 
 | # beams blocked (of 14) | 0 | 6 | 8 | 10 | 12 |
 |---|---|---|---|---|---|
-| RSRP-only (top-K=13, %) | 89.2 | 69.8 | 56.0 | 35.9 | 22.3 |
-| **Gated fusion (%)** | 89.4 | 72.1 | 57.9 | 39.7 | 24.9 |
+| RSRP-only (top-K=13, %) | 88.7±0.8 | 69.3±0.6 | 56.0±0.4 | 36.2±0.4 | 22.6±0.3 |
+| **Gated fusion (%)** | 89.0±0.4 | 71.8±0.3 | 58.3±0.4 | 39.5±0.3 | 25.2±0.3 |
+| **gain (pts)** | +0.3±0.6 | +2.5±0.7 | +2.3±0.8 | +3.2±0.6 | +2.6±0.3 |
 
 Full numbers, ablations, and the clean-data analysis are in
 [`results/RESULTS.md`](results/RESULTS.md). The paper is in
@@ -45,6 +50,9 @@ novel/               proposed method + ablations
   buildFusionNet.m      concatenation fusion (ablation)
   buildGatedFusionNet.m gated residual fusion (proposed; useGate toggles the gate)
   run_gated.m           train + evaluate the proposed method   (entry point)
+  exp_seed_variance.m   retrain across 5 seeds; Table III seed-variance (entry point)
+  make_seedvar_fig.m    regenerate the blockage figure with across-seed error bars
+  exp_correlated_blockage.m  contiguous (correlated) blockage robustness study
   exp_ablation_arch.m   architecture ablation (gate necessity)
   exp_ablation_baseline.m  width / depth / UE-density ablations
   exp_impairments.m     noise / quantization / blockage sweeps
@@ -74,10 +82,13 @@ run_baseline('doTraining', false)  % re-evaluate the saved net
 % Proposed method (gated fusion, blockage robustness)
 cd ../novel
 run_gated                          % train RSRP-only + gated fusion, sweep blockage, plot
+exp_seed_variance                  % retrain across 5 seeds -> Table III (seed variance)
+make_seedvar_fig                   % blockage figure with across-seed error bars
 
 % Ablations
 exp_ablation_arch                  % gate necessity (RSRP-only / concat / residual / gated)
 exp_ablation_baseline              % width, depth, UE density
+exp_correlated_blockage            % contiguous (correlated) blockage study
 ```
 
 Headless / terminal:

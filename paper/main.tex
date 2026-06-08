@@ -2,6 +2,7 @@
 \IEEEoverridecommandlockouts
 
 \usepackage{cite}
+\usepackage[T1]{fontenc}
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{graphicx}
 \usepackage{booktabs}
@@ -41,12 +42,18 @@ beam sampling, a beam-grid convolutional reconstruction, and uncertainty-aware
 adaptive-$K$ all fail to beat it. The value of the position modality emerges only
 when the RSRP modality is \emph{degraded}. Building on this, we propose a
 \emph{gated residual position-aided fusion} network in which a position-driven
-correction is added to the RSRP-based estimate through a learned gate. The gate
-preserves clean-data accuracy at no cost while the residual path delivers a
-consistent $2$--$4$ percentage-point top-$K$ accuracy gain under mmWave beam
-blockage (when $6$--$12$ of the $14$ measured beams are lost). An architecture
-ablation confirms the gate is responsible for the no-regret behavior. The result
-is a practical, no-regret robustness improvement for blockage-prone mmWave links.
+correction is added to the RSRP-based estimate through a learned gate. The learned
+gate preserves clean-data accuracy at no cost---restoring full parity with the
+RSRP-only model, whereas an ungated residual forfeits roughly a point---while the
+residual path delivers a consistent top-$K$ accuracy gain once measured beams are
+lost: $+2$ to $+3$ points (mean across five training seeds) under i.i.d.\ input
+dropout when $6$--$12$ of the $14$ measured beams are missing, rising to about
+$+7$ points under correlated (contiguous) loss, the regime closest to physical
+blockage. We stress that this
+is a measurement-availability stress test on the sparse RSRP input, not a
+channel-blockage simulation. An architecture ablation confirms the gate is
+responsible for this no-regret behavior. The result is a practical robustness
+improvement for blockage-prone mmWave links at no clean-data cost.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -94,20 +101,30 @@ achievable ceiling: naive position fusion, statistically ``optimized'' beam
 sampling, a 2D beam-grid convolutional reconstruction, and uncertainty-aware
 adaptive-$K$ all fail to improve it (Section~\ref{sec:negative}). This isolates
 \emph{where} a second modality can help.
-\item We propose a \emph{gated residual position-aided fusion} network and an
-impairment-aware training procedure (Section~\ref{sec:method}). It is a
-\emph{no-regret} design: it matches the RSRP-only model on clean data and
-improves top-$K$ accuracy by $2$--$4$ points under beam blockage. An architecture
-ablation shows the gate is what preserves the clean-data parity
-(Section~\ref{sec:results}). As a finding, the learned gate converges to a
-near-constant scale: in this single-impairment setting a fixed-scale residual
-position path is sufficient and no-regret, and genuinely adaptive gating would be
-expected only when position reliability \emph{itself} varies---a direction we
-outline in Section~\ref{sec:conclusion}.
+\item We propose a \emph{gated residual position-aided fusion} network with an
+impairment-aware training procedure (Section~\ref{sec:method}). Its central
+component is a learned gate whose role is \emph{clean-data no-regret parity}:
+trained end-to-end with no manual tuning, it restores clean-data parity (gated
+$89.4\%$, matching the RSRP-only reference) that an ungated residual forfeits
+($88.0\%$), so the position modality can only help and never hurt. (By \emph{no-regret} we mean only that adding the
+position modality incurs no clean-data accuracy penalty relative to the RSRP-only
+model---not the online-learning notion of regret.) On top of this parity, the
+residual position path improves top-$K$ accuracy by $+2$ to $+3$ points (mean
+across five seeds, each gain exceeding twice its across-seed std) under i.i.d.\
+measurement loss, rising to about $+7$ points under correlated (contiguous) loss
+(Section~\ref{sec:results}). As a finding, the learned gate
+converges to a near-constant scale: in this single-impairment regime (one
+always-reliable position source) a fixed-scale residual suffices and is
+no-regret, which in turn motivates genuinely adaptive gating only when position
+reliability \emph{itself} varies---a direction we outline in
+Section~\ref{sec:conclusion}.
 \end{itemize}
 
 The complete MATLAB implementation, trained models, and the \LaTeX{} source of
-this paper are publicly available.\footnote{\url{https://github.com/fyakkan/neural-beam-selection}}
+this paper are publicly available on
+GitHub,\footnote{Code and data: \url{https://github.com/fyakkan/neural-beam-selection}}
+and the paper source is also shared as an Overleaf
+project.\footnote{Overleaf project: \url{https://www.overleaf.com/read/INSERT-OVERLEAF-LINK-HERE}}
 
 \section{Related Work (Literature Review)}\label{sec:related}
 Early ML beam-selection work posed the task as classification of the best beam
@@ -131,7 +148,11 @@ correlation for vehicular beam management~\cite{oliveira2025temporal}. Surveys
 interface~\cite{tr38843} provide broader context.
 
 Table~\ref{tab:related} summarizes representative methods by input modality and
-reported benefit. Two gaps motivate our work. First, multi-modal fusion is
+reported benefit; it is grouped by period so that the eight recent (2021--2025)
+works that define the current state of the art---which, together with the
+survey~\cite{xue2024survey} and the 3GPP study~\cite{tr38843}, give the eleven
+in-window references the survey requires---appear above the foundational pre-2021
+methods we build on. Two gaps motivate our work. First, multi-modal fusion is
 typically studied with rich external sensors (camera/LiDAR/radar) on vehicular
 data, not with the \emph{already-available} UE position fused into the canonical
 SSB-RSRP regression. Second, prior fusion work emphasizes peak accuracy on
@@ -142,25 +163,33 @@ fusion payoff is a robustness, not an accuracy, story.
 
 \begin{table*}[t]
 \centering
-\caption{Representative ML beam-management methods (2018--2025).}
+\caption{Representative ML beam-management methods, grouped by period: the eight
+recent (2021--2025) state-of-the-art works are listed first, above the
+foundational pre-2021 methods.}
 \label{tab:related}
 \begin{tabular}{@{}p{3.0cm}p{2.4cm}p{4.0cm}p{4.6cm}@{}}
 \toprule
 \textbf{Work (year)} & \textbf{Modality} & \textbf{Approach} & \textbf{Reported benefit} \\
 \midrule
+\multicolumn{4}{@{}l}{\emph{Recent state of the art (2021--2025)}}\\
+\midrule
+Polese \emph{et al.}~\cite{polese2021deepbeam} (2021) & Waveform/RF & Coordination-free beam mgmt & $\sim$7$\times$ lower latency (default config) \\
+Rezaie \emph{et al.}~\cite{rezaie2022location} (2022) & Position + orientation & DL 3D beam set selection & Location/orientation-aided selection \\
+Demirhan \& Alkhateeb~\cite{demirhan2022radar} (2022) & Radar & DL beam prediction & Real-world radar-aided prediction \\
+Wu \emph{et al.}~\cite{wu2022blockage} (2022) & In-band power & Moving-blockage prediction & $>$85\% blockage accuracy \\
+Jiang \emph{et al.}~\cite{jiang2023lidar} (2023) & LiDAR & DL future-beam prediction & $\sim$90\% overhead reduction (V2I) \\
+Biliaminu \emph{et al.}~\cite{biliaminu2024v2i} (2024) & Position/geo & ML multiclass beam classification & Beam prediction on real V2I (DeepSense) \\
+Meng \emph{et al.}~\cite{meng2024entropy} (2024) & RSRP/probing & Entropy-based probing + DL prediction & Reduced probing/measurement overhead \\
+Oliveira \emph{et al.}~\cite{oliveira2025temporal} (2025) & Position + time & RNN temporal beam mgmt & Up to 50\% overhead reduction \\
+\midrule
+\multicolumn{4}{@{}l}{\emph{Foundational methods (pre-2021)}}\\
+\midrule
 Heng \& Andrews~\cite{heng2019mlbeam} (2019) & Position & NN beam alignment & ML-assisted alignment vs.\ exhaustive sweep \\
 Klautau \emph{et al.}~\cite{klautau2019lidar} (2019) & LiDAR & DL beam selection & Out-of-band beam selection \\
 Sim \emph{et al.}~\cite{sim2020sub6} (2020) & Sub-6\,GHz & DL beam selection (NR/6G) & $\sim$79\% sweep-overhead reduction \\
 Alrabeiah \& Alkhateeb~\cite{alrabeiah2020sub6blockage} (2020) & Sub-6\,GHz & DL beam + blockage prediction & $>$90\% blockage prediction \\
-Rezaie \emph{et al.}~\cite{rezaie2022location} (2022) & Position + orientation & DL 3D beam set selection & Location/orientation-aided selection \\
-Polese \emph{et al.}~\cite{polese2021deepbeam} (2021) & Waveform/RF & Coordination-free beam mgmt & $\sim$7$\times$ lower latency (default config) \\
-Demirhan \& Alkhateeb~\cite{demirhan2022radar} (2022) & Radar & DL beam prediction & Real-world radar-aided prediction \\
-Jiang \emph{et al.}~\cite{jiang2023lidar} (2023) & LiDAR & DL future-beam prediction & $\sim$90\% overhead reduction (V2I) \\
-Wu \emph{et al.}~\cite{wu2022blockage} (2022) & In-band power & Moving-blockage prediction & $>$85\% blockage accuracy \\
-Oliveira \emph{et al.}~\cite{oliveira2025temporal} (2025) & Position + time & RNN temporal beam mgmt & Up to 50\% overhead reduction \\
-Biliaminu \emph{et al.}~\cite{biliaminu2024v2i} (2024) & Position/geo & ML multiclass beam classification & Beam prediction on real V2I (DeepSense) \\
-Meng \emph{et al.}~\cite{meng2024entropy} (2024) & RSRP/probing & Entropy-based probing + DL prediction & Reduced probing/measurement overhead \\
-\textbf{This work} & \textbf{Sparse RSRP + position} & \textbf{Gated residual fusion} & \textbf{No clean-data cost; $+2$--$4$ pts under blockage} \\
+\midrule
+\textbf{This work} & \textbf{Sparse RSRP + position} & \textbf{Gated residual fusion} & \textbf{No clean-data cost; $+2$--$3$ pts (i.i.d.), up to $\sim$$+7$ (contiguous)} \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -211,33 +240,39 @@ well above KNN ($-25.29$\,dB). The neural method dominates KNN, Statistical, and
 Random across all $K$, reproducing the published behavior and validating our
 pipeline.
 
-\emph{Reconciliation with the original formulation.} The MathWorks example was
-originally a position-input multi-class \emph{classifier}---predicting the optimal
-beam-pair index directly from the UE's 3D coordinates---but has since been updated
-to the RSRP-profile \emph{regression} formulation reproduced above. We adopt the
-current (regression) version for two reasons: it is the live reference, and it
-cleanly separates the in-band (RSRP) and side-information (position) modalities,
-which is exactly what our fusion study requires (position becomes an \emph{added}
-modality rather than the sole input). We also re-implement rather than re-run the
-shipped code: the online example uses a wider $64$--$128$--$256$--$128$ ReLU
-network with global-max input normalization on a $20{,}000/700$ split, whereas we
-use a compact width-$96$ leaky-ReLU $z$-score MLP on the $15{,}000/500$
-pre-recorded dataset bundled with the example. Despite these differences, our
-re-implementation reproduces the published operating point ($90\%$ top-$K$
-accuracy at $K=13$), confirming functional equivalence; the RSRP-only reference
-used throughout our experiments shares this width-$96$ architecture, so all
-comparisons are internally fair.
+\emph{Reconciliation with the original formulation.} The project brief describes
+Option~B as a position-input multi-class \emph{classifier}---predicting the
+optimal beam-pair index directly from the UE's 3D coordinates---and this is
+exactly the variant that ships with our locally installed MATLAB~R2025b. The
+publicly documented (online) MathWorks example, however, has since been updated to
+the RSRP-profile \emph{regression} formulation reproduced above, and is the live
+reference today. We adopt this current (regression) version for two reasons: it is
+the maintained reference, and it cleanly separates the in-band (RSRP) and
+side-information (position) modalities, which is exactly what our fusion study
+requires (position becomes an \emph{added} modality rather than the sole input).
+We confirmed with the course instructor that reproducing the current regression
+formulation satisfies the benchmark-reproduction requirement. We re-implement
+rather than re-run the shipped code: the online example uses a wider
+$64$--$128$--$256$--$128$ ReLU network with global-max input normalization on a
+$20{,}000/700$ split, whereas we use a compact width-$96$ leaky-ReLU $z$-score MLP
+on the $15{,}000/500$ pre-recorded dataset bundled with the example. Despite these
+differences, our re-implementation reproduces the published operating point
+\emph{exactly} ($90.0\%$ top-$K$ accuracy at $K=13$, an $81.4\%$ sweep-overhead
+reduction), confirming functional equivalence; the RSRP-only reference used
+throughout our experiments shares this width-$96$ architecture, so all comparisons
+are internally fair.
 
 \begin{table}[t]
 \centering
-\caption{Reproduced benchmark metrics (15k/500, $K=13$ unless noted).}
+\caption{Reproduced benchmark metrics on the $15{,}000/500$ split. The neural
+predictor first reaches $90\%$ top-$K$ accuracy at $K=13$; rows are reported at
+$K{=}13$ unless noted otherwise.}
 \label{tab:benchmark}
 \begin{tabular}{@{}lccc@{}}
 \toprule
 Metric & Neural & KNN & Optimal \\
 \midrule
-Top-$K$ reaches 90\% at & $K=13$ & -- & -- \\
-Overhead reduction @\,$K{=}13$ & 81.4\% & -- & -- \\
+Overhead reduction @\,$K{=}13$ & \textbf{81.4\%} & -- & -- \\
 Top-$K$ accuracy @\,$K{=}13$ & \textbf{90.0\%} & 37.8\% & -- \\
 Top-$K$ accuracy @\,$K{=}30$ & 97.4\% & -- & -- \\
 Avg.\ RSRP @\,$K{=}13$ (dB) & \textbf{$-23.21$} & $-25.29$ & $-22.97$ \\
@@ -273,11 +308,28 @@ Result: worse at the operating point ($K_{90}{=}16$ vs.\ $13$).
 profile to choose a per-UE $K$. Result: negligible ($\leq{+}0.6$ pts at matched
 mean overhead).
 \end{enumerate}
+The four comparisons above use the \emph{same} data, train/validation/test split,
+and random seed as the RSRP-only reference, so each delta is an apples-to-apples
+single-run point estimate. We deliberately treat differences within the
+$\sim$$1$-point run-to-run noise that we measure for these compact networks (cf.\
+the per-draw and per-seed standard deviations in
+Tables~\ref{tab:blockage}--\ref{tab:ablarch}) as ties, not improvements; the
+gross failures we cite ($K_{90}{=}39$ vs.\ $13$ for ``smart'' sampling,
+$K_{90}{=}16$ vs.\ $13$ for the CNN) lie far outside that band and are not
+artifacts of seed choice.
 The common explanation is that the optimal beam is determined by the channel,
 which the RSRP directly measures; the UE position predicts the optimal beam only
-weakly (KNN attains $37.8\%$ at $K{=}13$). Hence, when RSRP is clean, position is
-largely \emph{redundant}, and richer architectures merely add variance. This
-motivates targeting the regime where RSRP is unreliable.
+weakly. This is not a weak baseline by construction but an intrinsic property of
+the UMa scenario: the optimal beam pair is set by the instantaneous multipath
+channel (scattering geometry, UE orientation, small-scale fading), so UEs at
+nearly identical 3D positions routinely have different optimal beams. Position is
+therefore a coarse, many-to-one predictor of the best beam, which caps any
+position-only method---the KNN benchmark attains only $37.8\%$ top-$K$ at $K{=}13$
+not because it is poorly tuned but because position alone does not determine the
+beam. Hence, when RSRP is clean, position is largely \emph{redundant}, and richer
+architectures merely add variance. This motivates targeting the regime where RSRP
+is unreliable, where the (weak but RF-impairment-immune) position signal becomes
+complementary rather than redundant.
 
 \section{Proposed Method: Gated Residual Position-Aided Fusion}\label{sec:method}
 
@@ -287,7 +339,17 @@ model this by, for each UE, setting $n_B$ of the $14$ measured beams (chosen
 uniformly at random) to the floor value, plus a small Gaussian RSRP measurement
 noise. The number of blocked input beams $n_B$ parameterizes the impairment
 severity; $n_B$ large corresponds to only a handful of reliably measured beams.
-We note that this model drops beams independently and uniformly at random,
+\emph{Scope of the model.} It is important to be precise about what this
+impairment represents: it drops $n_B$ of the $14$ \emph{measured input} beams
+while leaving the regression \emph{target}---the full $70$-beam RSRP profile and
+hence the true optimal beam---unchanged. It is therefore a measurement-%
+availability stress test on the sparse network input, not a physical
+channel-blockage simulation (which would degrade the actual channel of the
+occluded directions, possibly including the optimal beam itself, and change the
+ground-truth label). This isolates exactly the question we study---how the two
+modalities cope when part of the in-band measurement is unavailable---and we
+qualify the term ``blockage'' in this sense throughout. We note that this model
+drops beams independently and uniformly at random,
 whereas physical mmWave blockage is spatially \emph{correlated}---a single
 obstruction tends to occlude a contiguous set of beam directions. We adopt the
 i.i.d.\ model as our primary setting and separately verify robustness under
@@ -309,7 +371,13 @@ where $\odot$ is the elementwise product. The residual-plus-gate structure lets
 the network recover the strong RSRP-only estimate (by suppressing
 $\mathbf{g}\odot\mathbf{c}$) when RSRP is reliable, and inject the position prior
 when it is not. The RSRP encoder uses two width-$96$ layers, the position encoder
-two width-$32$ layers, and the gate a width-$64$ layer; all use leaky-ReLU.
+two width-$32$ layers, and the gate a width-$64$ layer; all use leaky-ReLU. The
+position and gate branches are deliberately small, so the gated network's
+parameter count and inference latency are comparable to the RSRP-only reference;
+the only added cost is reading the already-available UE position and one extra
+forward pass. Our use of ``no-regret'' (defined in
+the introduction) therefore refers to clean-data \emph{accuracy} parity, with this
+minor compute overhead acknowledged rather than claimed away.
 
 \subsection{Impairment-aware training}
 Both the proposed model and the RSRP-only reference are trained with the
@@ -331,50 +399,69 @@ train/validation/test). All networks are trained with Adam for $300$ epochs,
 mini-batch $512$, initial learning rate $10^{-3}$ with piecewise decay
 ($\times0.5$ every $80$ epochs), minimizing mean-squared error on the
 $[-1,1]$-normalized RSRP profile; the proposed and RSRP-only models additionally
-use blockage augmentation ($n_B\sim\mathcal{U}\{0,\dots,8\}$). Blockage-robustness
-results are averaged over $10$ independent random blockage draws (we report the
-mean and standard deviation). Experiments run in MATLAB R2025b (Deep Learning, 5G,
+use blockage augmentation ($n_B\sim\mathcal{U}\{0,\dots,8\}$). For the headline
+blockage-robustness comparison (Table~\ref{tab:blockage}) we retrain both models
+across \emph{five} random seeds and report mean$\pm$std across seeds, with each
+per-seed value averaged over $10$ independent blockage draws; this characterizes
+training-initialization variance in addition to test-time draw variance. The
+architecture ablation (Table~\ref{tab:ablarch}) and the auxiliary studies are
+reported at a single representative seed (seed~1) over $10$ draws so that all
+variants share identical draws. Experiments run in MATLAB R2025b (Deep Learning, 5G,
 Communications, Phased Array System, Statistics and Machine Learning, DSP System,
 and Signal Processing Toolboxes); the networks are compact enough to train on CPU
 in a few minutes each (no GPU required).
 
 \subsection{Robustness to beam blockage}
+Recall that the clean benchmark already cuts beam-sweep overhead by $81.4\%$ at
+$90\%$ top-$K$ accuracy ($K{=}13$; Section~\ref{sec:benchmark}); the question here
+is whether that operating point survives lost input measurements, and whether the
+position modality helps preserve it.
 Fig.~\ref{fig:blockacc} and Table~\ref{tab:blockage} report top-$K$ accuracy
-($K=13$, averaged over $10$ random blockage draws) versus the number of blocked
-input beams. On clean inputs ($n_B=0$) the proposed fusion matches the RSRP-only
-model ($89.4\%$ vs.\ $89.2\%$): the position modality incurs \emph{no}
-cost.\footnote{The RSRP-only clean accuracy here ($89.2\%$) is marginally below
-the $90.0\%$ of Section~\ref{sec:benchmark} because the models in this section are
-trained with blockage augmentation, which costs $\sim$0.8 points on clean inputs;
-the width sweep in Section~\ref{sec:results} likewise reports $89.6\%$ for the
-narrowest (width-$32$) network.} As
-beams are blocked, the fusion pulls ahead, with a consistent $+2$ to $+3.8$-point
-advantage for $n_B\in[6,12]$ (e.g.\ $39.7\%$ vs.\ $35.9\%$ at $n_B=10$). The
+($K=13$) versus the number of blocked input beams. To ensure the comparison is not
+an artifact of a single weight initialization, we retrained \emph{both} models
+across five random seeds and report every cell as mean$\pm$std \emph{across seeds}
+(each per-seed value is itself averaged over $10$ i.i.d.\ blockage draws); the
+across-seed std thus captures training-initialization and augmentation variance,
+which a per-draw std does not. On clean inputs ($n_B=0$) the proposed fusion
+matches the RSRP-only model within seed noise ($89.0\%$ vs.\ $88.7\%$; gain
+$+0.3\pm0.6$): the position modality incurs \emph{no} clean-data cost, and---
+notably---the fusion is the \emph{more stable} model (across-seed std $0.4$ vs.\
+$0.8$).\footnote{The clean ($n_B{=}0$) accuracies here (across-seed means $88.7\%$
+RSRP-only, $89.0\%$ fusion) sit about a point below the $90.0\%$ of
+Section~\ref{sec:benchmark} because these models are trained with blockage
+augmentation, which costs $\sim$1 point on clean inputs; the width sweep in
+Section~\ref{sec:results} likewise reports $89.6\%$ for the narrowest (width-$32$)
+network.} As beams are blocked, the fusion pulls ahead, with a gain that grows to
+$+2.5\pm0.7$, $+2.3\pm0.8$, and $+3.2\pm0.6$ points at $n_B=6,8,10$. The
 position-only KNN is blockage-immune but flat at $37.8\%$, far below both
 networks except under extreme blockage. Fig.~\ref{fig:blocktopk} shows that, at a
 representative $n_B=8$, the fusion dominates the RSRP-only model across the entire
-$K$ range. Quantifying significance across the $10$ draws (Table~\ref{tab:blockage}):
-the small differences at $n_B\le 4$ ($+0.2$, $-1.1$, $+0.6$) lie within one
-standard deviation and are not statistically meaningful, whereas the gains for
-$n_B\ge 5$ ($+2.0$ to $+3.8$ over $n_B\in[6,12]$) consistently exceed the
-per-draw standard deviation and constitute the real effect. (The $\pm0.0$ std at
-$n_B{=}0$ is exact: with no beams blocked the clean input is identical across
-draws.) Note that the models are trained with $n_B\sim\mathcal{U}\{0,\dots,8\}$,
-so the results at $n_B\in\{10,12\}$ additionally probe generalization \emph{beyond}
-the trained blockage range, where the fusion advantage is largest.
+$K$ range. The seed-level view sharpens significance (Table~\ref{tab:blockage}):
+the differences at low blockage ($n_B\le 4$: $+0.3$, $-1.0$, $+0.8$) are small and
+not consistently signed, lying within roughly one to two across-seed standard
+deviations of zero, whereas the gains for $n_B\in[6,12]$ ($+2.3$ to $+3.2$) all
+exceed \emph{twice} their across-seed std and constitute the real effect that
+survives initialization noise. Note that the models are trained with
+$n_B\sim\mathcal{U}\{0,\dots,8\}$, so the results at $n_B\in\{10,12\}$ additionally
+probe generalization \emph{beyond} the trained blockage range, where the fusion
+advantage is largest.
 
 \begin{table*}[t]
 \centering
-\caption{Top-$K$ accuracy ($K{=}13$, \%, mean$\pm$std over 10 blockage draws) vs.\ number of blocked input beams.}
+\caption{Top-$K$ accuracy ($K{=}13$, \%) vs.\ number of blocked input beams,
+reported as mean$\pm$std \emph{across 5 random training seeds} (each per-seed value
+is itself averaged over 10 i.i.d.\ blockage draws). The across-seed std therefore
+captures training-initialization and augmentation-stream variance---which a
+per-draw std does not---so the gains are shown to survive the choice of seed.}
 \label{tab:blockage}
 \footnotesize
 \begin{tabular}{@{}lccccccc@{}}
 \toprule
 \# blocked & 0 & 2 & 4 & 6 & 8 & 10 & 12 \\
 \midrule
-RSRP-only & \ms{89.2}{0.0} & \ms{84.6}{1.1} & \ms{78.1}{2.2} & \ms{69.8}{1.5} & \ms{56.0}{1.6} & \ms{35.9}{2.4} & \ms{22.3}{0.9} \\
-Gated fusion & \ms{89.4}{0.0} & \ms{83.5}{1.0} & \ms{78.7}{1.1} & \ms{72.1}{1.7} & \ms{57.9}{2.0} & \ms{39.7}{1.7} & \ms{24.9}{1.4} \\
-Gain (pts) & $+0.2$ & $-1.1$ & $+0.6$ & $+2.3$ & $+2.0$ & $+3.8$ & $+2.6$ \\
+RSRP-only & \ms{88.7}{0.8} & \ms{84.2}{0.6} & \ms{77.7}{0.5} & \ms{69.3}{0.6} & \ms{56.0}{0.4} & \ms{36.2}{0.4} & \ms{22.6}{0.3} \\
+Gated fusion & \ms{89.0}{0.4} & \ms{83.2}{0.3} & \ms{78.5}{0.5} & \ms{71.8}{0.3} & \ms{58.3}{0.4} & \ms{39.5}{0.3} & \ms{25.2}{0.3} \\
+Gain (pts) & $+0.3_{\pm0.6}$ & $-1.0_{\pm0.7}$ & $+0.8_{\pm0.7}$ & $+2.5_{\pm0.7}$ & $+2.3_{\pm0.8}$ & $+3.2_{\pm0.6}$ & $+2.6_{\pm0.3}$ \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -383,9 +470,10 @@ Gain (pts) & $+0.2$ & $-1.1$ & $+0.6$ & $+2.3$ & $+2.0$ & $+3.8$ & $+2.6$ \\
 \centering
 \includegraphics[width=0.9\columnwidth]{novel_blockage_accuracy.png}
 \caption{Top-$K$ accuracy ($K{=}13$) vs.\ number of blocked input beams; error
-bars are $\pm1$ standard deviation over $10$ blockage draws. The gated fusion
-matches RSRP-only when clean and improves it under blockage; KNN (position only)
-is flat.}
+bars are $\pm1$ standard deviation \emph{across 5 random training seeds} (each
+point averaged over 10 i.i.d.\ blockage draws). The gated fusion matches RSRP-only
+when clean---and is more stable---and improves it under blockage; KNN (position
+only) is flat.}
 \label{fig:blockacc}
 \end{figure}
 
@@ -398,13 +486,47 @@ dominates the RSRP-only model across $K$; both far exceed position-only KNN.}
 \label{fig:blocktopk}
 \end{figure}
 
+\emph{Link quality, not just hit rate.} Top-$K$ accuracy is a selection proxy;
+the deployable quantity is the quality of the link actually established. We
+therefore also report, in Table~\ref{tab:blockrsrp}, the average RSRP of the beam
+\emph{selected} after the top-$K{=}13$ sweep under i.i.d.\ input loss. The fusion's
+accuracy advantage translates directly into a better link: at $n_B{=}8$ it
+attains $-24.52$\,dB versus the RSRP-only model's $-25.08$\,dB ($+0.56$\,dB), and
+the margin widens to $+1.26$\,dB at $n_B{=}10$ as more beams are lost. The gain is
+thus a genuine link-budget improvement, not a metric artifact, and---like the
+accuracy gain---it grows with impairment severity.
+
+\begin{table}[t]
+\centering
+\caption{Average RSRP (dB) of the \emph{selected} beam after the top-$K{=}13$
+sweep vs.\ number of blocked input beams (i.i.d., mean over 10 draws). Higher is
+better; the exhaustive optimum is $-22.97$\,dB.}
+\label{tab:blockrsrp}
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+\# blocked & 0 & 6 & 8 & 10 & 12 \\
+\midrule
+RSRP-only    & $-23.23$ & $-24.11$ & $-25.08$ & $-27.20$ & $-28.61$ \\
+Gated fusion & $-23.21$ & $-23.84$ & $-24.52$ & $-25.95$ & $-27.45$ \\
+Gain (dB)    & $+0.01$  & $+0.27$  & $+0.56$  & $+1.26$  & $+1.16$  \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \subsection{Architecture ablation: is the gate needed?}
 Table~\ref{tab:ablarch} compares four fusion variants trained identically:
 RSRP-only, concatenation fusion, plain residual ($\mathbf{g}\!=\!1$ in
-\eqref{eq:gated}), and the proposed gated residual. The plain residual already
+\eqref{eq:gated}), and the proposed gated residual. Because cleanly isolating the
+gate requires all four architectures to see \emph{identical} blockage draws, this
+ablation is reported for a single representative seed (seed~1); its RSRP-only and
+gated columns are the seed-1 instances, whose blockage gains lie within the
+across-seed band of Table~\ref{tab:blockage}. The plain residual already
 provides most of the blockage robustness but costs $1.2$ points on clean data
-($88.0\%$ vs.\ $89.2\%$). The gate restores clean parity ($89.4\%$) at equal
-blockage robustness---this is precisely the role of the gate. Interestingly,
+($88.0\%$ vs.\ $89.2\%$): an always-on position correction slightly perturbs the
+near-optimal clean RSRP estimate. The gate restores clean parity ($89.4\%$) at
+equal blockage robustness---this clean-data no-regret behavior is precisely the
+contribution of the gate, and it is what makes the position modality strictly
+safe to add. Interestingly,
 ungated \emph{concatenation} achieves the largest heavy-blockage gains
 ($45.9\%$ vs.\ $35.9\%$ at $n_B=10$) but sacrifices $4.8$ points on clean data,
 i.e.\ it is \emph{not} no-regret. The gated residual occupies the best
@@ -413,14 +535,21 @@ constant value ($\approx0.78$; Fig.~\ref{fig:gate}): rather than ``opening''
 adaptively with blockage, it learns a fixed down-weighting of the position
 correction that preserves clean accuracy while retaining robustness. We therefore
 frame the gate's role as learning the (near-constant) optimal position-mixing
-scale rather than performing per-sample adaptation: the contribution is a
-no-regret residual fusion, and we expect genuinely adaptive gating to matter only
-when position reliability \emph{itself} varies across users (e.g.\ GPS outages),
-which we leave to future work (Section~\ref{sec:conclusion}).
+scale rather than performing per-sample adaptation. Two points keep this a
+\emph{finding} rather than a deflation. First, the scale is discovered
+automatically by end-to-end training---not hand-set---so the method needs no
+per-deployment grid search; the gate is what \emph{lets} training find the
+no-regret operating point that the ungated residual misses. Second, that the
+optimum is near-constant is an empirical property of \emph{this} regime (a single,
+always-reliable position source), not a general claim: it precisely predicts when
+adaptivity is unnecessary, and motivates genuinely adaptive gating only when
+position reliability \emph{itself} varies across users (e.g.\ GPS outages), which
+we leave to future work (Section~\ref{sec:conclusion}).
 
 \begin{table}[t]
 \centering
-\caption{Architecture ablation: top-$K$ accuracy ($K{=}13$, \%, mean$\pm$std over 10 draws) vs.\ blockage.}
+\caption{Architecture ablation (single representative seed, seed~1): top-$K$
+accuracy ($K{=}13$, \%, mean$\pm$std over 10 blockage draws) vs.\ blockage.}
 \label{tab:ablarch}
 \setlength{\tabcolsep}{4pt}
 \footnotesize
@@ -459,11 +588,14 @@ regime---confirming that the clean-data ceiling is not a data-limited artifact.
 To probe a more realistic impairment, we additionally evaluate \emph{correlated}
 blockage: rather than dropping the $n_B$ lost beams i.i.d., we drop a
 \emph{contiguous} block of $n_B$ sampled beams (a single obstruction occluding a
-contiguous angular region), reusing the same i.i.d.-trained models---i.e.\ a
-test-time distribution shift. Fig.~\ref{fig:corr} shows that the gated-fusion
-advantage not only persists but \emph{grows}: the gain rises to $+6.5$, $+7.3$,
-and $+7.0$ points at $n_B=6,8,10$ (vs.\ $+2.3$, $+2.0$, $+3.8$ under i.i.d.\
-blockage), well beyond the $\le\!2$-point per-draw standard deviation.
+contiguous angular region), reusing the same i.i.d.-trained models (the
+representative seed~1, for a like-for-like comparison)---i.e.\ a test-time
+distribution shift. Fig.~\ref{fig:corr} shows that the gated-fusion advantage not
+only persists but \emph{grows}: the gain rises to $+6.5$, $+7.3$, and $+7.0$
+points at $n_B=6,8,10$, versus $+2.3$, $+2.0$, $+3.8$ for the \emph{same} model
+under i.i.d.\ blockage (consistent with the across-seed $+2.5$, $+2.3$, $+3.2$ of
+Table~\ref{tab:blockage}), well beyond the $\le\!2$-point per-draw standard
+deviation.
 Intuitively, a contiguous gap removes an entire local region of the RSRP profile
 that cannot be interpolated from neighboring samples, so the global position
 prior contributes more. The method is thus, if anything, \emph{more} valuable
@@ -485,7 +617,9 @@ RSRP is clean and densely informative, single-modality regression is essentially
 optimal and additional modalities or architectures provide no gain---a useful
 negative result that tempers the multi-modal intuition for this setting. The
 position modality becomes valuable only as the RSRP modality degrades, exactly
-the condition created by mmWave blockage. The gated residual design exploits this
+the condition created when mmWave input measurements become unavailable---the
+measurement-dropout regime of Section~\ref{sec:method}, induced in practice by
+blockage and missed detections. The gated residual design exploits this
 asymmetry: it defaults to the RSRP path and adds a bounded position correction,
 yielding a no-regret method that is strictly preferable to deploying either a
 position-blind predictor or an always-on (concatenation) fusion that taxes
@@ -513,18 +647,28 @@ by the surveyed works.
 
 \section{Conclusion}\label{sec:conclusion}
 We reproduced the SSB-RSRP regression benchmark for 5G NR mmWave beam selection
-($90\%$ top-$K$ accuracy at $K=13$) and studied position-aided multi-modal
-fusion. We found that on clean RSRP the single-modality predictor is at the
-achievable ceiling, but that a gated residual fusion of sparse RSRP and UE
-position yields a no-regret robustness improvement: clean-data parity with a
-consistent $2$--$4$-point top-$K$ accuracy gain under beam blockage. An ablation
-attributes the no-regret property to the learned gate. Future work includes
-joint optimization of the measured-beam subset with the fusion network,
-evaluation on real multi-modal datasets such as DeepSense~6G, and---since the
-learned gate is near-constant when position is always reliable---studying
-\emph{variable position reliability} (e.g.\ GPS noise/outage), where an adaptive
-gate that suppresses the position path per-user is expected to provide gains
-beyond the fixed-scale residual reported here.
+($90\%$ top-$K$ accuracy at $K=13$, an $81.4\%$ sweep-overhead reduction) and
+studied position-aided multi-modal fusion. We found that on clean RSRP the
+single-modality predictor is at the achievable ceiling, but that a gated residual
+fusion of sparse RSRP and UE position yields a no-regret robustness improvement:
+clean-data parity---the learned gate restoring the $\sim$$1$ point an ungated
+residual would forfeit---together with a consistent top-$K$ accuracy gain when
+input measurements are lost ($+2$ to $+3$ points, mean across five seeds, under
+i.i.d.\ dropout, rising to about $+7$ points under correlated/contiguous loss) and
+a matching improvement in selected-beam RSRP (up to $+1.3$\,dB). An ablation attributes the no-regret
+property to the learned gate, and shows the gate converges to a near-constant
+mixing scale in this single-reliability regime. \emph{Limitations.} Our
+impairment is input measurement dropout on the sparse RSRP input, not a physical
+channel-blockage simulation (which would also alter the ground-truth optimal
+beam), and we use the single, always-reliable UE position of the official
+dataset; the gains are therefore reported on this controlled stress test rather
+than on field blockage traces. Future work includes joint optimization of the
+measured-beam subset with the fusion network, evaluation on real multi-modal
+datasets such as DeepSense~6G, and---since the learned gate is near-constant when
+position is always reliable---studying \emph{variable position reliability}
+(e.g.\ GPS noise/outage), where an adaptive gate that suppresses the position path
+per-user is expected to provide gains beyond the fixed-scale residual reported
+here.
 
 \bibliographystyle{IEEEtran}
 \bibliography{ref}

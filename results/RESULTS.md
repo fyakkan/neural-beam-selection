@@ -31,6 +31,21 @@ trained impairment-aware (blockage of 0–8 of 14 input beams + light noise).
 | **Gated Fusion** | 89.4±0.0 | 83.5±1.0 | 78.7±1.1 | 72.1±1.7 | 57.9±2.0 | 39.7±1.7 | 24.9±1.4 |
 | gain (pts) | +0.2 | −1.1 | +0.6 | +2.3 | +2.0 | +3.8 | +2.6 |
 
+(The ±std above is **blockage-draw** variance at the canonical seed=1; **seed/initialization**
+variance is characterized separately in §2a below.)
+
+**Link quality under blockage — avg RSRP (dB) of the SELECTED beam (K=13, mean over 10 draws):**
+
+| # blocked (of 14) | 0 | 6 | 8 | 10 | 12 |
+|---|---|---|---|---|---|
+| RSRP-only | −23.23 | −24.11 | −25.08 | −27.20 | −28.61 |
+| **Gated Fusion** | −23.21 | −23.84 | −24.52 | −25.95 | −27.45 |
+| gain (dB) | +0.01 | +0.27 | +0.56 | +1.26 | +1.16 |
+
+The top-K accuracy gain translates into a better link (higher selected RSRP), and the margin
+GROWS with blockage severity (+1.26 dB at nB=10). Exhaustive optimum −22.97 dB. This is paper
+Table V (`tab:blockrsrp`). Numbers from `results/metrics/novel_metrics.json` (`rsrpRSRP`/`rsrpFusion`).
+
 Position-only KNN ≈ 37.8% (flat, blockage-immune). Headline: **no clean-data
 cost (+0.2), consistent +2–4 pt gain once beams are blocked** — a no-regret
 robustness improvement. **Significance:** gains at nB≤4 (+0.2/−1.1/+0.6) are within
@@ -38,6 +53,27 @@ one std (noise); gains at nB≥5 (+2.0 to +3.8 for nB∈[6,12]) exceed the per-d
 (real effect). Figures (with error bars / std bands): `novel_blockage_accuracy.png`,
 `novel_blockage_rsrp.png`, `novel_blockage_topk.png`, `novel_gate_behavior.png`.
 Per-cell std also in `results/metrics/novel_metrics.json`.
+
+## 2a. Seed-variance of the i.i.d. blockage gain (paper Table III) — `novel/exp_seed_variance.m`
+The §2 table above is one trained model pair at seed=1, with ±std over blockage DRAWS.
+To show the gain survives weight-initialization noise, BOTH models were retrained across
+**5 random seeds** (each per-seed acc averaged over the same 10 i.i.d. draws). Reported as
+**mean ± std ACROSS SEEDS** — this is the paper's Table III. Fig `novel_blockage_accuracy.png`
+now uses these across-seed error bars (`novel/make_seedvar_fig.m`). Raw per-seed data:
+`results/metrics/seed_variance.{mat,json}`.
+
+| # blocked (of 14) | 0 | 2 | 4 | 6 | 8 | 10 | 12 |
+|---|---|---|---|---|---|---|---|
+| RSRP-only | 88.7±0.8 | 84.2±0.6 | 77.7±0.5 | 69.3±0.6 | 56.0±0.4 | 36.2±0.4 | 22.6±0.3 |
+| **Gated fusion** | 89.0±0.4 | 83.2±0.3 | 78.5±0.5 | 71.8±0.3 | 58.3±0.4 | 39.5±0.3 | 25.2±0.3 |
+| gain (pts) | +0.3±0.6 | −1.0±0.7 | +0.8±0.7 | +2.5±0.7 | +2.3±0.8 | +3.2±0.6 | +2.6±0.3 |
+
+- **Clean parity holds across seeds** (gain +0.3±0.6); fusion is also the *more stable* model
+  (std 0.4 vs 0.8). No clean-data cost survives the seed average.
+- **Blockage gains survive seeds:** at nB∈[6,12] every gain (+2.3 to +3.2) exceeds **2× its
+  across-seed std** → real, not an init artifact. Low-blockage deltas (nB≤4) are small/inconsistent.
+- Honest headline: **+2 to +3 pts (i.i.d., across 5 seeds)**, vs the single-seed §2 view (+2 to +3.8).
+  per-seed clean RSRP-only acc = [89.2 89.0 87.4 89.4 88.4]; clean fusion = [89.4 88.6 88.6 89.2 89.0].
 
 ## 3. Architecture ablation (gate necessity) — `novel/exp_ablation_arch.m`
 acc@K=13 vs # blocked beams; all fusion variants trained with identical aug.
