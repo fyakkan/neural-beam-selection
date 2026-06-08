@@ -11,6 +11,8 @@
 \usepackage{xcolor}
 \usepackage{url}
 \graphicspath{{figures/}}
+% Overleaf read link defined via \urldef so the '#' fragment survives inside \footnote
+\urldef{\overleafurl}\url{https://www.overleaf.com/read/ydgmcckxxzkm#8a1c66}
 % compact mean$\pm$std cell: \ms{mean}{std} -> mean with small subscript std
 \newcommand{\ms}[2]{$#1_{\pm#2}$}
 
@@ -124,7 +126,7 @@ The complete MATLAB implementation, trained models, and the \LaTeX{} source of
 this paper are publicly available on
 GitHub,\footnote{Code and data: \url{https://github.com/fyakkan/neural-beam-selection}}
 and the paper source is also shared as an Overleaf
-project.\footnote{Overleaf project: \url{https://www.overleaf.com/read/INSERT-OVERLEAF-LINK-HERE}}
+project.\footnote{Overleaf project: \overleafurl}
 
 \section{Related Work (Literature Review)}\label{sec:related}
 Early ML beam-selection work posed the task as classification of the best beam
