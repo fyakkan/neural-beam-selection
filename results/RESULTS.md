@@ -44,7 +44,7 @@ variance is characterized separately in §2a below.)
 
 The top-K accuracy gain translates into a better link (higher selected RSRP), and the margin
 GROWS with blockage severity (+1.26 dB at nB=10). Exhaustive optimum −22.97 dB. This is paper
-Table V (`tab:blockrsrp`). Numbers from `results/metrics/novel_metrics.json` (`rsrpRSRP`/`rsrpFusion`).
+Table IV (`tab:blockrsrp`). Numbers from `results/metrics/novel_metrics.json` (`rsrpRSRP`/`rsrpFusion`).
 
 Position-only KNN ≈ 37.8% (flat, blockage-immune). Headline: **no clean-data
 cost (+0.2), consistent +2–4 pt gain once beams are blocked** — a no-regret
@@ -78,9 +78,11 @@ now uses these across-seed error bars (`novel/make_seedvar_fig.m`). Raw per-seed
 ## 3. Architecture ablation (gate necessity) — `novel/exp_ablation_arch.m`
 acc@K=13 vs # blocked beams; all fusion variants trained with identical aug.
 
-Mean ± std over 10 draws. **Tables III and IV share one set of 10 blockage draws**
-(scored by the single evaluator `run_gated.m`), so the RSRP-only and Gated cells here
-match §2 exactly.
+Mean ± std over 10 blockage draws at the canonical seed=1 (paper **Table V**).
+All four variants are scored on **one shared set of 10 draws** by the single
+evaluator `run_gated.m`, so the RSRP-only and Gated cells here match §2 exactly.
+(Paper Table III instead aggregates the RSRP-only/Gated rows **across 5 seeds**,
+so its cells differ slightly from these single-seed numbers — see §2a.)
 
 | # blocked | RSRP-only | Concat | Residual (no gate) | **Gated** |
 |---|---|---|---|---|
