@@ -80,8 +80,9 @@ LiDAR, radar, vision, or sub-6\,GHz channels~\cite{klautau2019lidar,
 rezaie2022location,alkhateeb2023deepsense,demirhan2022radar,deng2025scanbest};
 they are robust to RF impairments but typically achieve lower peak accuracy.
 A widely used in-band formulation, distributed as a reference example by
-MathWorks,\footnote{This is the project's designated benchmark (Option~B,
-\emph{Neural Network for Beam Selection}).} casts beam selection as RSRP-profile
+MathWorks~\cite{mathworks2025beamselect},\footnote{This is the project's
+designated benchmark (Option~B, \emph{Neural Network for Beam Selection}).}
+casts beam selection as RSRP-profile
 \emph{regression}: a neural network maps a downsampled subset of RSRP
 measurements to the full per-beam-pair RSRP profile, after which only the top-$K$
 predicted beams are swept. This example was \emph{recently updated} from an
@@ -246,9 +247,9 @@ pipeline.
 Option~B as a position-input multi-class \emph{classifier}---predicting the
 optimal beam-pair index directly from the UE's 3D coordinates---and this is
 exactly the variant that ships with our locally installed MATLAB~R2025b. The
-publicly documented (online) MathWorks example, however, has since been updated to
-the RSRP-profile \emph{regression} formulation reproduced above, and is the live
-reference today. We adopt this current (regression) version for two reasons: it is
+publicly documented (online) MathWorks example~\cite{mathworks2025beamselect},
+however, has since been updated to the RSRP-profile \emph{regression} formulation
+reproduced above, and is the live reference today. We adopt this current (regression) version for two reasons: it is
 the maintained reference, and it cleanly separates the in-band (RSRP) and
 side-information (position) modalities, which is exactly what our fusion study
 requires (position becomes an \emph{added} modality rather than the sole input).
